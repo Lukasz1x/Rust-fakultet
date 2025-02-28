@@ -143,7 +143,7 @@ if x > 10 {
 ### Pętle
 `pętla while`
 
-Podobnie jak w instrukcjach warunkowych pętle while wymagane są nawisy `{}` a `()` mogą być pominięte tzn `iwhile warunek { instrukcje }` .
+Podobnie jak w instrukcjach warunkowych pętle while wymagane są nawisy `{}` a `()` mogą być pominięte tzn `while warunek { instrukcje }` .
 
 Za pomocą instrukcji `break` pętlę można przerwać w dowolnym momencie.
 ```rs
