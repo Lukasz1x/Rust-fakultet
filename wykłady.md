@@ -71,12 +71,12 @@ wieloliniowy */
 ```
 
 ### Tworzenie zmiennych/stałych
-- mut - dodanie go pozwala na zmianę wartości
-- :typ - określa typ, musi być jeśli wartość nie jest przypisana
-- =wartość - przypisuje wartość, jeśli występuje to nie wymaga podania typu
 ```rs
 let [mut] nazwa [:typ][=wartosc];
 ```
+- mut - dodanie go pozwala na zmianę wartości
+- :typ - określa typ, musi być jeśli wartość nie jest przypisana
+- =wartość - przypisuje wartość, jeśli występuje to nie wymaga podania typu
 przykłady:
 ```rs
 let a :i32;
@@ -117,7 +117,7 @@ w przeciwieństwie do cpp w rust wymagane są nawisy `{}` a `()` mogą być pomi
 - `!`  negacja
 - Nawiasy `()` mogą być użyte przy kilku warunkach aby wymusić odpowiednią kolejność
 
-if else:
+`if else`
 ```rs
 let x = 5;
 let y = 10;
@@ -128,7 +128,7 @@ if x > 3 && y < 15 {
     println!("Przynajmniej jeden warunek jest fałszywy");
 }
 ```
-else if
+`else if`
 ```rs
 let x = 5;
 
@@ -141,7 +141,7 @@ if x > 10 {
 }
 ```
 ### Pętle
-pętla while
+`pętla while`
 
 Podobnie jak w instrukcjach warunkowych pętle while wymagane są nawisy `{}` a `()`.
 
