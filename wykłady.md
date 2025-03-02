@@ -52,7 +52,7 @@ coming soon ...
 ```
 cargo new [nazwa]           tworzy projekt w nowym katalogu o podanej nazwie
 cargo init                  tworzy projekt w aktualnym katalogu
-    --vcs non               po dodaniu projekt jest tworzony bez repozytorium git
+    --vcs none              po dodaniu projekt jest tworzony bez repozytorium git
 
 cargo build                 kompilacja
 cargo run                   uruchamianie (automatyczna kompilacja, jeśli plik był zmieniony od poprzedniej kompilacji)
@@ -143,7 +143,7 @@ if x > 10 {
 ### Pętle
 `pętla while`
 
-Podobnie jak w instrukcjach warunkowych pętle while wymagane są nawisy `{}` a `()` mogą być pominięte tzn `while warunek { instrukcje }` .
+Podobnie jak w instrukcjach warunkowych w pętli while wymagane są nawisy `{}` a `()` mogą być pominięte tzn `while warunek { instrukcje }` .
 
 Za pomocą instrukcji `break` pętlę można przerwać w dowolnym momencie.
 ```rs
