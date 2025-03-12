@@ -12,7 +12,7 @@
 
 5. Napisz funkcję, która wyświetli rozkład podanej liczby na czynniki pierwsze.
 
-6. Napisz funkcję `pow_mod(x: u128, n: u128, p: u128) -> u128` która obliczy $(x^n)\%p$
+6. Napisz funkcję `pow_mod(x: u128, n: u128, p: u128) -> u128` która obliczy $(x^n)\% p$
  w taki sposób, by działało to prawidłowo dla jak największych danych.
 
     Wskazówka 1: skorzystaj z własności reszty z dzielenia dla iloczynu (czy też inaczej: iloczynu modulo).\
