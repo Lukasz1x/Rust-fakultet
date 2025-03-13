@@ -147,7 +147,117 @@ fn main() // ->()  main zwraca wartość pustą
 ```
 
 # Wykład 3
-cooming soon...
+Przekazywanie parametru:
+- na własnośc (przez wartość)
+    - przez kopiowanie
+    - przez przeniesienie
+- przez pożyczkę/referencję `&`
+- przez pożyczkę/referencję mutowalną `&mut`
+
+```rs
+fn swap(x: &mut i32, y: &mut i32)
+{
+    let pom = *x;
+    *x=*y;
+    *y=pom;
+}
+
+fn main()
+{
+    let mut a=10;
+    let mut b=20;
+    swap(&mut a, &mut b);
+    dbg!(a);
+    dbg!(b);
+
+    //swap(&mut a, &mut a);  //nie można pożyczyć tej samej rzeczy 2 razy
+    //dbg!(a);
+}
+```
+
+```rs
+fn powitaj_v1(imie: &String) {
+    println!("Witaj, {imie}!")
+}
+
+fn powitaj_v2(imie: str) {
+    println!("Witaj, {imie}!")
+}
+
+fn powitaj_v3(imie: &str) {
+    println!("Witaj, {imie}!")
+}
+
+fn main() {
+    powitaj_v1("Edek"); //nie zadziała, bo Edek jest (&?)str, a String to struct
+    powitaj_v2("Edek"); //nie zadziała, bo Edek jest &str, a funkcja przyjmuje str, jest tu jakiś problem, że str ma rozmiar nieznany podczas kompilacji??
+    powitaj_v3("Edek"); //zadziała
+}
+```
+String nie jest typem kopiowalnym, jest przekazywany na własność.
+```rs
+fn powitaj_v1(imie: &str) //uzywanie &str jest bardziej użytecznie w nagłówku funkcji niż &String 
+{ 
+    println!("Witaj, {imie}!")
+}
+fn powitaj_v1(imie: &String) {
+    println!("Witaj, {imie}!")
+}
+
+fn powitaj_v2(imie: String) {
+    println!("Witaj, {imie}!")
+}
 
 
+
+fn main() {
+    powitaj_v1("Edek");
+    let imie1 ="Felek".to_string();
+    let imie2 =String::from("Balbina");
+    powitaj_v2(&imie1);
+    powitaj_v3(imie2.clone()); //String jest potencjalnie bardzo dużą wartością, więc nie ma kopiowania stringów, żeby programista zrobił to sam pisząc .clone()
+    powitaj_v1(&imie1); //dozwolona jest konwersja z &String na &str
+    powitaj_v1(&imie2); //jest nie jawna konwersja typów
+}
+```
+
+```rs
+fn powitaj_v0(tab: [i32; 4]) { //bez & musi być rozmiar
+    println!("Witaj, {tab:?}!") 
+}
+fn powitaj_v1(tab: &[i32]) { 
+    println!("Witaj, {tab:?}!")
+}
+fn powitaj_v1(tab: &Vec<i32>) {
+    println!("Witaj, {tab:?}!")
+}
+
+fn powitaj_v2(tab: Vec<i32>) {
+    println!("Witaj, {tab:?}!")
+}
+
+
+
+fn main() {
+    let tab0 = [1,4,90,34];
+    powitaj_v0(tab0);
+    powitaj_v1(&[15,3,20]);
+    let tab1 = vec![3,5,7,10,3,4,5,6];
+    let tab2 = Vec::from([4,10,3,9,87]);
+    powitaj_v2(&tab1);
+    powitaj_v3(tab2.clone());
+    powitaj_v1(&tab1); 
+    powitaj_v1(&tab2); 
+}
+```
+```rs
+fn wyswietl_jeden(t: &[i32], i: usize){
+    println!("{}", t[i]);
+}
+
+fn main() {
+    let tab0 = [1,4,90,34];
+    println!("{}", tab0[2]); 
+    wyswietl_jeden(&tab0, 12); //program spanikuje
+}
 
