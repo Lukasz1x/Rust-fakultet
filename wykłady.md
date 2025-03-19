@@ -82,8 +82,8 @@ let x = if a<b {let y = 30; y} else {0}
 Tryb debugerski
 ```rs
 let a = 'x';
-println!("{}, a")       //output: x
-println!("{:?}, a")     //output: 'x'
+println!("{}", a)           //output: x
+println!("{:?}", a)         //output: 'x'
 ```
 
 ```rs
@@ -94,11 +94,11 @@ println!("{}", a as u32)    //outpyt: 324
 ```
 Sposoby zapisywania liczb:
 ```rs
-let a  = 1_00_003;
-let b = 0xfa;
-let c = 0o721;
-let d =0b0011_1010;
-let e =b'a';  //not sure czy tak
+let a  = 1_000_003;         //1000003
+let b = 0xfa;               //250 
+let c = 0o721;              //465
+let d =0b0011_1010;         //58
+let e =b'a';                //97 - pod e zostanie przypisana wartość litery 'a' z tabeli ASCII
 ```
 Pętla nieskończona:
 ```rs
@@ -108,40 +108,69 @@ loop{
 ```
 
 Pętla `loop` musi się wykonać raz lub do pierwszej instrukcji `break`, dlatego dozwolone jest zwracanie wartości przez `break`,natomiast pętla `while` może wcale się nie wywołać dlatego w niej nie jest dopuszczony `break` ze zwracaniem.
-# ***uzupełnic kod ze zdjęć***
 
+```rs
+let mut i = 0;
+let x = while i < 10 {
+    print!("{i} ");
+    i+=1;
+};
+print!("{x:?}");            // output: 0 1 2 3 4 5 6 7 8 9 ()
+```
+```rs
+let mut i = 0;
+let x = loop {
+    if i >= 10 {
+        break;
+    }
+    print!("{i} ");
+    i+=1;
+};
+print!("{x:?}");            // output: 0 1 2 3 4 5 6 7 8 9 ()
+```
+```rs
+let mut i = 0;
+let x = loop {
+    if i >= 10 {
+        break 999;          //break może zwracać wartość tylko w przypadku pętli loop
+    }
+    print!("{i} ");
+    i+=1;
+};
+print!("{x:?}");            // output: 0 1 2 3 4 5 6 7 8 9 999
+```
 #### Funkcje
 
 ```rs
-fn powiekszon_o_1_v1(x :i32) -> i32
+fn powiekszona_o_1_v1(x :i32) -> i32
 {
-    x+1  //można pisać return x+1;
+    x+1                     //można pisać return x+1;
 }
 
-fn powiekszon_o_1_v2(mut x :i32) -> i32
+fn powiekszona_o_1_v2(mut x :i32) -> i32
 {
     x+=1;
     x
 }
 
-fn powiekszon_o_1_v2(x :&mut i32) //referencja do mutowalnej zmiennej
+fn powiekszona_o_1(x :&mut i32) //referencja do mutowalnej zmiennej
 {
     *x+=1;
 }
 
 fn main() // ->()  main zwraca wartość pustą
 {
-    let a = 12;
-    let b = powiekszon_o_1_v1(a);
+    let mut a = 12;
+    let b = powiekszona_o_1_v1(a);
     println!("{}", a==12);  //true
     println!("{}", b==13);  //true
-    let c = powiekszon_o_1_v2(a);
+    let c = powiekszona_o_1_v2(a);
     println!("{}", a==12);  //true
     println!("{}", c==13);  //true
 
-    powiekszon_o_1(&mut a);
+    powiekszona_o_1(&mut a);
     println!("{}", a==13);  //true
-    powiekszon_o_1(&mut a);
+    powiekszona_o_1(&mut a);
     println!("{}", a==14);  //true
 }
 ```
@@ -260,4 +289,8 @@ fn main() {
     println!("{}", tab0[2]); 
     wyswietl_jeden(&tab0, 12); //program spanikuje
 }
+```
+```rs
+let tab = [0;6]; //stworzenie tablcy o 6 elementach równych 0
+```
 
