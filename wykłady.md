@@ -2,6 +2,7 @@
 - [Wykład 1](#Wykład-1)
 - [Wykład 2](#Wykład-2)
 - [Wykład 3](#Wykład-3)
+- [Wykład 4](#Wykład-4)
 
 # Wykład 1
 
@@ -293,4 +294,184 @@ fn main() {
 ```rs
 let tab = [0;6]; //stworzenie tablcy o 6 elementach równych 0
 ```
+
+# Wykład 4
+
+W rust nie ma wyjątków, ponieważ są nie efektywne i nie strukruralne. Instrukcja return jest skokiem i jest nie strukturalna. Zapis bez return jest lepszy ponieważ funkcja się po prostu kończy i dokładnie wiadomo gdzie się wraca. Wyjątki zaburzają silne typowanie.
+```cpp
+int f(int x);
+int g(int x);
+```
+Powyższe funckje w cpp mogą mieć ten sam typ zwracany i takie same argumenty, ale mogą mieć inne wyjątki i to zabuża silne typowanie. 
+```rs
+fn wyswietl_jeden(t: &[i32], i: usize)
+{
+    println!("{:?}", t.get(i));     // typ Option<&i32>
+}
+
+fn main() {
+    let tab0 = [1,4,90,34];
+    wyswietl_jeden(&tab0, 1);       // Some(4)
+    wyswietl_jeden(&tab0, 12);      // None
+}
+```
+```rs
+fn wyswietl_jeden(t: &[i32], i: usize)
+{
+    let x = t.get(i);
+    println!("{:?}", x)
+    println!("{:?}", x.is_none());  
+    println!("{:?}", x.unwrap_or(&-1));             // to daje domyślną wartość
+    //println!("{:?}", x.unwrap_or_default());      // ale w tym przypadku referencja do int nie ma domyślnego typu
+    println!("{:?}", x.unwrap());                   // to daje panike
+}
+
+fn main() {
+    let tab0 = [1,4,90,34];
+    wyswietl_jeden(&tab0, 1);   
+    wyswietl_jeden(&tab0, 12);    
+}
+```
+🚨 `str` jest statyczny więc nie można go zmieniać, w przeciwienstwie do `String`.
+```rs
+fn main()
+{
+    let s0 :&str = "Witaj, świecie!";
+    let mut s1 :String = "Ala ma kota".to_string();
+    let s2 :String = String::new();
+    let s3 :String = String::from("Pies i kot.");
+
+    s1.push_str(" i psa");
+    s1.push('.');
+    println!("{s1:?}");                     // "Ala ma kota i psa"
+
+    println!("{:?}", s0.get(1..2));         // Some("i")
+    println!("{:?}", "pies.".len());        // 4
+    println!("{:?}", "pień.".len());        // 5
+    println!("{:?}", s0.get(6..9));         // Some(" ś")
+    println!("{:?}", s0.get(7..10));        // Some("św")
+    println!("{:?}", s0.get(8..11));        // None
+    println!("{:?}", s0.get(9..12));        // Some("wie")
+
+    println!("{:?}", s0.chars());           // Chars(['W', 'i', 't', 'a', 'j', ',', ' ', 'ś', 'w', 'i', 'e', 'c', 'i', 'e', '!'])
+    println!("{:?}", s0.bytes());           // Bytes(Copied { it: Iter([87, 105, 116, 97, 106, 44, 32, 197, 155, 119, 105, 101, 99, 105, 101, 33]) })
+    
+    println!("{:?}", s0.chars().nth(3));    // Some('a')
+    println!("{:?}", s0.bytes().nth(3));    // Some(97)
+
+    println!("{:?}", s0.chars().nth(7));    // Some('ś')
+    println!("{:?}", s0.bytes().nth(7));    // Some(197)
+
+    println!("{:?}", s0.chars().nth(8));    // Some('w')
+    println!("{:?}", s0.bytes().nth(8));    // Some(155)
+
+    println!("{:?}", s0.chars().nth(15));   // None
+    println!("{:?}", s0.bytes().nth(15));   // Some(33)
+}
+```
+Znaki które dają się zapisać na jednym bajcie są zapisywane tylko w jednym, natomiast dla przykładu litera `ń` zajmuje 2 bajty. Funkcja `get()` dla napisów operuje na bajtach.
+```rs
+fn main()
+{
+    let mut s1 :String = "Ala ma żółtego kota".to_string();
+
+    s1.push_str(" i psa");
+    s1.push('.');
+    println!("{s1:?}");                 // "Ala ma żółtego kota i psa."
+
+    println!("{:?}", s1.find('a'));     // Some(2)
+    println!("{:?}", s1.find('x'));     // None
+    println!("{:?}", s1.find("a"));     // Some(2)
+    println!("{:?}", s1.find("kot"));   // Some(18)
+
+    let s2 = s1.replace("kota", "szczura");
+
+    println!("{:?}", s1);               // "Ala ma żółtego kota i psa."
+    println!("{:?}", s2);               // "Ala ma żółtego szczura i psa."
+
+    let b = s1.as_bytes();
+    println!("{b:?}");                  // [65, 108, 97, 32, 109, 97, 32, 197, 188, 195, 179, 197, 130, 116, 101, 103, 111, 32, 107, 111, 116, 97, 32, 105, 32, 112, 115, 97, 46]
+
+    //let c = s1.as_chars();            // tego nie ma
+    //println!("{c:?}");
+}
+```
+```rs
+fn main()
+{
+    let mut s1 :String = "Ala ma żółtego kota".to_string();
+
+    for i in 3..7
+    {
+        print!(" {i}");             // 3 4 5 6
+    }
+    
+    let x =3..7;
+    for i in x 
+    {
+        print!(" {i}");             // 3 4 5 6
+    }
+
+    for z in s1.chars()             
+    {
+        print!(" {z:?}");           //  'A' 'l' 'a' ' ' 'm' 'a' ' ' 'ż' 'ó' 'ł' 't' 'e' 'g' 'o' ' ' 'k' 'o' 't' 'a'
+    }
+
+    for z in s1.bytes()
+    {
+        print!(" {z:?}");           // 65 108 97 32 109 97 32 197 188 195 179 197 130 116 101 103 111 32 107 111 116 97
+    }
+
+    for z in s1.chars().rev()
+    {
+        print!(" {z:?}");           // 'a' 't' 'o' 'k' ' ' 'o' 'g' 'e' 't' 'ł' 'ó' 'ż' ' ' 'a' 'm' ' ' 'a' 'l' 'A'
+    }
+
+    let s2 :String = s1.chars().rev().collect();
+    println!("{s2:?}");             // "atok ogetłóż am alA"
+
+    let w1 :Vec<char> = s1.chars().rev().collect();
+    println!("{w1:?}");             // ['a', 't', 'o', 'k', ' ', 'o', 'g', 'e', 't', 'ł', 'ó', 'ż', ' ', 'a', 'm', ' ', 'a', 'l', 'A']
+
+    let w2 :Vec<_> = s1.chars().rev().collect();
+    println!("{w2:?}");             // ['a', 't', 'o', 'k', ' ', 'o', 'g', 'e', 't', 'ł', 'ó', 'ż', ' ', 'a', 'm', ' ', 'a', 'l', 'A']
+}
+```
+```rs
+fn main()
+{
+    for z in "kolacja".chars().step_by(2)
+    {
+        println!("{z:?}");          // 'k' 'l' 'c' 'a'
+    }
+
+    for z in [3, 10, 4, 87, 92, 34]
+    {
+        println!("{z:?}");          // 3 10 4 87 92 34
+    }
+
+    for z in [3, 10, 4, 87, 92, 34].iter().step_by(2)
+    {
+        println!("{z:?}");          // 3 4 92
+    }as
+
+    for z in (3..5).chain(7..10)
+    {
+        println!("{z:?}");			// 3 4 7 8 9
+    }
+
+    for z in (3..5).zip(7..10)
+    {
+        println!("{z:?}");			//  (3, 7) (4, 8)
+    }
+
+    let p = (1, 2.4, 'z');
+    println!("{}", p.1);			// 2.4
+}
+```
+
+
+
+
+
 
