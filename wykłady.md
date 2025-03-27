@@ -3,6 +3,7 @@
 - [Wykład 2](#Wykład-2)
 - [Wykład 3](#Wykład-3)
 - [Wykład 4](#Wykład-4)
+- [Wykład 5](#wykład-5)
 
 # Wykład 1
 
@@ -470,8 +471,194 @@ fn main()
 }
 ```
 
+# Wykład 5
+
+Problem czytelników i pisarzy.
+.|read only|mut(able)|
+-- |--|--
+private | +| +|
+shared | +| ☠️
+
+```rs
+fn show(a: &i32, b:&i32)
+{
+    println!("{a} {b}");
+}
+
+fn swap(a: &mut i32, b: &mut i32)
+{
+    let pom = *a;
+    *a=*b;
+    *b=pom;
+}
+
+fn add_to(a: &mut i32, b: &i32)
+{
+    *a+=b;
+}
+
+fn main()
+{
+    let mut x=10;
+    let mut y=200;
+    swap(&mut x, &mut y);
+    show(&x, &y);
+    show(&x, &x);
+    // swap(&mut x, &mut x);
+
+    let mut t = [1, 30, 45];
+    show(&t[0], &t[2]);
+    // swap(&mut t[0], &mut t[2]);  // tablica to jedna struktura i mimo że to 2 różne elementy to jedna struktura
+
+    add_to(&mut x, &y);
+    show(&x, &y);
+    // add_to(&mut x, &x); //jeśli jest mutowanie to niże moża więcej pożyczyć tej samej zmiennej
+}
+```
+
+```rs
+fn f1() -> i32 {}
+
+fn f2() -> Option<i32> {}                           // warianty: Some(wynik), None
+
+fn f3() -> Result<i32, BladWejsciaWyjscia> {}       // warianty: Ok(wynik), Err(opis_błędu)
+
+fn f4() -> Result<i32, BladParsowanie> {}           // warianty: Ok(wynik), Err(opis_błędu)
+
+fn main()
+{
+    let x = Some('x');
+    let mut y = None;
+    let a :Result<bool, &str> = Err("kot");
+    let mut b = Ok(3.5);
+
+    println!("{}", x.unwrap());
+    // println!("{}", y.unwrap());
+    // println!("{}", a.unwrap());
+    println!("{}", b.unwrap());
+
+    println!("{}", x.unwrap_or('a'));
+    println!("{}", y.unwrap_or(342));
+    println!("{}", a.unwrap_or(true));
+    println!("{}", b.unwrap_or(-1.3));
+
+    println!("{}", y.unwrap_or_default());
+    println!("{}", a.unwrap_or_default());
+
+    println!("{}", x.is_none());
+    println!("{}", y.is_some());
+    println!("{}", a.is_ok());
+    println!("{}", b.is_err());
+
+    println!("{:?}", a.ok());
+    println!("{:?}", a.err());
+    println!("{:?}", b.ok());
+    println!("{:?}", b.err());
+
+    // println!("{}", y.expect("Spodziewałem się liczby"));
+
+    y = Some(123);
+    b = Err(true);
+
+}
+```
+
+```rs
+fn main()
+{
+    let x = Some('x');
+    let z = Some('z');
+    let y: Option<char> = None;
+    let w: Option<char> = None;
+
+    println!("{:?}", x.and(z));
+    println!("{:?}", x.and(y));
+    println!("{:?}", w.and(z));
+    println!("{:?}", w.and(y));
+
+    println!("{:?}", x.or(z));
+    println!("{:?}", x.or(y));
+    println!("{:?}", w.or(z));
+    println!("{:?}", w.or(y));
+
+    // Dlaczego nie ma tu implementacji xor ?
+
+}
+```
+
+```rs
+fn srednia(tab: & [f64]) -> Option<f64>
+{
+    if tab.len() == 0
+    {
+        None
+    }else
+    {
+        let s: f64 = tab.iter().sum();
+        Some(s/(tab.len() as f64))
+    }
+}
+
+fn ile_powyzej_sredniej(tab: &[f64]) -> Option<usize>
+{
+    let sr = srednia(&tab)?;  // ? - robi to co jest zakomentowane niżej
+    // if sr.is_none()
+    // {
+    //     return None;
+    // }
+    // let sr = sr.unwarp();
+    let mut ile = 0;
+    for x in tab 
+    {
+        if *x > sr
+        {
+            ile += 1;
+        }
+    }
+    Some(ile)
+
+}
+
+fn srednia2(tab: & [f64]) -> Result<f64>
+{
+    if tab.len() == 0
+    {
+        Err("Pusta tablica!".to_string())
+    }else
+    {
+        let s: f64 = tab.iter().sum();
+        Ok(s/(tab.len() as f64))
+    }
+}
+
+fn ile_powyzej_sredniej(tab: &[f64]) -> Result<usize>
+{
+    let sr = srednia(&tab)?;  // ? - robi to co jest zakomentowane niżej
+    // let sr = srednia(&tab); 
+    // if sr.is_err()
+    // {
+    //     return Err(sr.err().unwrap());
+    // }
+    // let sr = sr.unwarp();
+    let mut ile = 0;
+    for x in tab 
+    {
+        if *x > sr
+        {
+            ile += 1;
+        }
+    }
+    Ok(ile)
+
+}
 
 
 
+fn main() {
+    println!("{:?}", srednia(&[1.4, 3.2]));
+    println!("{:?}", srednia(&[3.2]));
+    println!("{:?}", srednia(&[]));
+}
+```
 
 
