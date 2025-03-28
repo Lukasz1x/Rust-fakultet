@@ -1,3 +1,4 @@
+Orginalny plik zawiera kolory, których nie widać na podglądzie na Githubie, więc warto go pobrać i otworzyć w czymś lepszym.
 # Spis treści:
 - [Wykład 1](#Wykład-1)
 - [Wykład 2](#Wykład-2)
@@ -472,12 +473,15 @@ fn main()
 ```
 
 # Wykład 5
+### Problem czytelników i pisarzy w Rust
+W Rust mechanizm pożyczania (borrowing) zapewnia bezpieczeństwo dostępu do danych i zapobiega błędom konkurencyjnego dostępu do pamięci. Można go rozpatrywać w kontekście problemu czytelników i pisarzy, gdzie mamy dwie operacje:
+- Czytelnicy (readers) – mogą jednocześnie odczytywać dane, o ile nikt ich nie modyfikuje.
+- Pisarze (writers) – mogą modyfikować dane, ale muszą mieć do nich wyłączny dostęp.
 
-Problem czytelników i pisarzy.
-.|read only|mut(able)|
+.|Read only|Mutable|
 -- |--|--
-private | +| +|
-shared | +| ☠️
+Private (pojedynczy właściciel) | ✅ Można pożyczać wiele razy| ✅ Można pożyczyć mutowalnie|
+Shared (współdzielony zasób) | ✅ Można pożyczać wiele razy| ☠️ Błąd – nie można jednocześnie modyfikować i pożyczać niemutowalnie
 
 ```rs
 fn show(a: &i32, b:&i32)
@@ -502,28 +506,44 @@ fn main()
     let mut x=10;
     let mut y=200;
     swap(&mut x, &mut y);
-    show(&x, &y);
-    show(&x, &x);
+    show(&x, &y);           // 200 10
+    show(&x, &x);           // 200 200
     // swap(&mut x, &mut x);
 
     let mut t = [1, 30, 45];
-    show(&t[0], &t[2]);
-    // swap(&mut t[0], &mut t[2]);  // tablica to jedna struktura i mimo że to 2 różne elementy to jedna struktura
+    show(&t[0], &t[2]);     // 1 45
+    // swap(&mut t[0], &mut t[2]);
 
     add_to(&mut x, &y);
-    show(&x, &y);
-    // add_to(&mut x, &x); //jeśli jest mutowanie to niże moża więcej pożyczyć tej samej zmiennej
+    show(&x, &y);           // 210 10
+    // add_to(&mut x, &x);
 }
 ```
+- <code><span style="color: cyan">swap(&mut x, &mut x);</code>
+    - Nie można pożyczyć `x` jako **mutable** (`&mut x`) dwa razy w tym samym wywołaniu funkcji.
+    - **Rust wymaga wyłącznego dostępu** do wartości przy mutowalnym referencji.
+    - `swap` przyjmuje dwa mutowalne odniesienia (`&mut i32`), a tu próbujemy przekazać dwa razy `x`, co powoduje konflikt dostępu.
+- <code><span style="color: cyan">swap(&mut t[0], &mut t[2]);</code>
+    - Rust traktuje tablicę jako **jedną strukturę**, a `t[0]` i `t[2]` to tylko jej elementy.
+    - Kompilator wykrywa, że próbujemy pożyczyć różne elementy tej samej tablicy jako mutowalne w tym samym czasie.
+    - W Rust mutowalne pożyczanie dotyczy całego obiektu, więc nie można pożyczyć dwóch elementów tablicy jednocześnie jako `&mut`
+- <code><span style="color: cyan">println!("{}", y.unwrap());</code>
+    - Funkcja `add_to` wymaga:
+        - mutowalnego odniesienia `&mut a`
+        - niemutowalnego odniesienia `&b`
+    - Ale przekazujemy x jednocześnie jako:
+        - `&mut x` (pierwszy argument)
+        - `&x` (drugi argument)
+    - Rust **nie pozwala na jednoczesne mutowanie i niemutowanie tej samej zmiennej**, ponieważ może to prowadzić do **race condition** (konfliktów dostępu do pamięci).
 
 ```rs
-fn f1() -> i32 {}
+fn f1() -> i32 {5}
 
-fn f2() -> Option<i32> {}                           // warianty: Some(wynik), None
+fn f2() -> Option<i32> {Some(5)}                            // warianty: Some(wynik), None
 
-fn f3() -> Result<i32, BladWejsciaWyjscia> {}       // warianty: Ok(wynik), Err(opis_błędu)
+fn f3() -> Result<i32, std::io::Error> {Ok(5)}              // warianty: Ok(wynik), Err(opis_błędu)
 
-fn f4() -> Result<i32, BladParsowanie> {}           // warianty: Ok(wynik), Err(opis_błędu)
+fn f4() -> Result<i32, std::string::ParseError> {Ok(5)}     // warianty: Ok(wynik), Err(opis_błędu)
 
 fn main()
 {
@@ -532,36 +552,46 @@ fn main()
     let a :Result<bool, &str> = Err("kot");
     let mut b = Ok(3.5);
 
-    println!("{}", x.unwrap());
-    // println!("{}", y.unwrap());
+    println!("{}", x.unwrap());                 // x
+    // println!("{}", y.unwrap());              
     // println!("{}", a.unwrap());
-    println!("{}", b.unwrap());
+    println!("{}", b.unwrap());                 // 3.5
 
-    println!("{}", x.unwrap_or('a'));
-    println!("{}", y.unwrap_or(342));
-    println!("{}", a.unwrap_or(true));
-    println!("{}", b.unwrap_or(-1.3));
+    println!("{}", x.unwrap_or('a'));           // x
+    println!("{}", y.unwrap_or(342));           // 342
+    println!("{}", a.unwrap_or(true));          // true
+    println!("{}", b.unwrap_or(-1.3));          // 3.5
 
-    println!("{}", y.unwrap_or_default());
-    println!("{}", a.unwrap_or_default());
+    println!("{}", y.unwrap_or_default());      // 0
+    println!("{}", a.unwrap_or_default());      // false
 
-    println!("{}", x.is_none());
-    println!("{}", y.is_some());
-    println!("{}", a.is_ok());
-    println!("{}", b.is_err());
+    println!("{}", x.is_none());                // false
+    println!("{}", y.is_some());                // false
+    println!("{}", a.is_ok());                  // false
+    println!("{}", b.is_err());                 // false
 
-    println!("{:?}", a.ok());
-    println!("{:?}", a.err());
-    println!("{:?}", b.ok());
-    println!("{:?}", b.err());
+    println!("{:?}", a.ok());                   // None
+    println!("{:?}", a.err());                  // Some("kot")
+    println!("{:?}", b.ok());                   // Some(3.5)
+    println!("{:?}", b.err());                  // None
 
     // println!("{}", y.expect("Spodziewałem się liczby"));
 
     y = Some(123);
     b = Err(true);
-
 }
 ```
+- <code><span style="color: cyan">println!("{}", y.unwrap());</code>
+    - `y` jest zadeklarowane jako `None`, więc `unwrap()` nie może zwrócić wartości i powoduje panikę. 
+    - `unwrap()` działa poprawnie tylko wtedy, gdy zmienna zawiera `Some(...)`         
+- <code><span style="color: cyan">println!("{}", a.unwrap());</code>
+    - `a` jest `Err("kot")`, więc `unwrap()` nie może zwrócić wartości i również powoduje panikę. 
+    - `unwrap()` na `Result<T,E>` działa poprawnie tylko wtedy, gdy zmienna zawiera `Ok(...)`
+- <code><span style="color: cyan">println!("{}", y.expect("Spodziewałem się liczby"));</code>
+    - `y` jest `None`, więc `expect(...)` zadziała tak samo jak `unwrap()`, ale zamiast domyślnego komunikatu Rust, wyrzuci panikę z dostosowaną wiadomością:  
+    <samp><span style="color: orange">thread 'main' panicked at 'Spodziewałem się liczby'
+
+
 
 ```rs
 fn main()
@@ -580,11 +610,41 @@ fn main()
     println!("{:?}", x.or(y));
     println!("{:?}", w.or(z));
     println!("{:?}", w.or(y));
-
-    // Dlaczego nie ma tu implementacji xor ?
-
 }
 ```
+### Dlaczego w `Option<T>` nie ma operacji `xor`?
+W Rust metody `and()` i `or()` dla `Option<T>` działają analogicznie do operacji logicznych **AND** i **OR**:
+- `and()` zwraca Some tylko wtedy, gdy oba operandy są Some, w przeciwnym razie zwraca None.
+- `or()` zwraca pierwszy Some, jeśli istnieje, inaczej zwraca drugi operand.
+
+Teraz zastanówmy się, dlaczego nie ma `xor()`.
+
+### 1. `XOR` dla wartości logicznych
+Działanie operatora `XOR` (wyłączne OR, "exclusive OR") dla wartości logicznych wygląda tak:
+
+A|B|A ⊕ B
+:--:|:--:|:--:
+0|0|0
+0|1|1
+1|0|1
+1|1|0
+
+`XOR` zwraca `true` tylko wtedy, gdy dokładnie jeden z operandów jest `true`.
+
+### 2. Czy `Option<T>` pasuje do `XOR`?
+Zastosujmy tę logikę do `Option<T>`:
+
+`Option<T>`	|`Option<T>`	|`xor()` wynik?
+:--|:--|:--
+`None`	|`None`	|`None` ?
+`Some(x)`	|`None`	|`Some(x)` ?
+`None`	|`Some(y)`	|`Some(y)` ?
+`Some(x)`	|`Some(y)`	|**?? (problem)**
+
+Pierwsze trzy przypadki wydają się sensowne, ale co zrobić w przypadku `Some(x) ⊕ Some(y)`?
+- Wartość `XOR` zakłada jednoznaczny wynik.
+- Ale co jeśli `x != y`? Który `Some` powinien zostać zwrócony?
+- Trzeba by było jakoś arbitralnie wybrać `x` lub `y`, co nie jest jednoznaczne i może prowadzić do nieintuicyjnych wyników.
 
 ```rs
 fn srednia(tab: & [f64]) -> Option<f64>
@@ -652,13 +712,12 @@ fn ile_powyzej_sredniej(tab: &[f64]) -> Result<usize>
 
 }
 
-
-
 fn main() {
     println!("{:?}", srednia(&[1.4, 3.2]));
     println!("{:?}", srednia(&[3.2]));
     println!("{:?}", srednia(&[]));
 }
 ```
+Operator `?` automatycznie obsługuje błędy, sprawiając, że kod jest czytelniejszy.
 
 
