@@ -5,6 +5,7 @@ Orginalny plik zawiera kolory, których nie widać na podglądzie na Githubie, w
 - [Wykład 3](#Wykład-3)
 - [Wykład 4](#Wykład-4)
 - [Wykład 5](#wykład-5)
+- [Wykład 6](#wykład-6)
 
 # Wykład 1
 
@@ -206,7 +207,14 @@ fn main()
     //dbg!(a);
 }
 ```
+📌 Analiza funkcji `swap`:
+- `x: &mut i32` i `y: &mut i32` to mutowalne referencje (`&mut`), które pozwalają na zmianę wartości zmiennych przekazanych do funkcji.
+- `*x` oraz `*y` oznacza dereferencję, czyli dostęp do wartości pod wskaźnikiem.
+- Zmienna pomocnicza `pom` pozwala przechować tymczasowo wartość x przed nadpisaniem.
 
+📌 Dlaczego `swap(&mut a, &mut a);` jest błędne?
+- Rust nie pozwala na więcej niż jedną mutowalną referencję do tej samej zmiennej w tym samym miejscu w kodzie.
+- Gdyby było to dozwolone, funkcja swap zmieniłaby tę samą wartość dwa razy, co mogłoby prowadzić do nieokreślonego zachowania w innych językach (np. w C++ mogłoby się udać, ale wynik byłby nieprzewidywalny).
 ```rs
 fn powitaj_v1(imie: &String) {
     println!("Witaj, {imie}!")
@@ -226,7 +234,25 @@ fn main() {
     powitaj_v3("Edek"); //zadziała
 }
 ```
-String nie jest typem kopiowalnym, jest przekazywany na własność.
+### Analiza wersji funkcji powitalnych
+❌ `powitaj_v1(imie: &String)`
+- **Błąd:** Oczekuje referencji `&String`, czyli obiektu typu `String` przechowywanego na stercie.
+- **Problem:** `"Edek"` jest typu `&str`, a nie `String`, więc Rust nie dokona automatycznej konwersji z `&str` do `&String`.
+- **Rozwiązanie:** Można przekazać referencję do `String`, np. `powitaj_v1(&String::from("Edek"))`.
+
+❌ `powitaj_v2(imie: str)`
+- **Błąd:** `str` to niekompletny typ (tzw. unsized type, DST – Dynamically Sized Type).
+- **Problem:** `str` nie ma określonego rozmiaru w czasie kompilacji, więc Rust nie wie, ile pamięci zaalokować.
+- **Poprawne podejście:** Używa się `&str`, czyli referencji do ciągu znaków.
+
+✅ `powitaj_v3(imie: &str)`
+- Oczekuje `&str`, czyli referencji do ciągu znaków, co jest zgodne z `"Edek"` (`&str`).
+- Działa poprawnie, ponieważ Rust automatycznie używa "Edek" jako `&str`.
+
+📌 Wskazówki
+- Aby akceptować zarówno `String`, jak i `&str`, najlepszą opcją jest `&str`, bo `String` można przekazać jako `&str` za pomocą `&my_string` lub `my_string.as_str()`.
+- `String` jest przekazywany na własność, ale `&str` jest lekką referencją, co czyni je bardziej uniwersalnym wyborem dla funkcji akceptujących tekst.
+
 ```rs
 fn powitaj_v1(imie: &str) //uzywanie &str jest bardziej użytecznie w nagłówku funkcji niż &String 
 { 
@@ -252,6 +278,16 @@ fn main() {
     powitaj_v1(&imie2); //jest nie jawna konwersja typów
 }
 ```
+- `String` nie implementuje `Copy`, więc jego przekazanie do funkcji przenosi własność.
+- `&String` można przekonwertować na `&str` (Rust automatycznie dokona dereferencji).
+- Kopiowanie String wymaga jawnego użycia `.clone()`, ponieważ kopiowanie dużych obiektów mogłoby być kosztowne.
+
+📌 Dlaczego `&str` jest lepsze niż `&String`?
+
+Jeśli funkcja ma przyjmować tekst, lepiej używać `&str` niż `&String`, ponieważ:
+
+✅ `&str` akceptuje zarówno `String`, jak i zwykłe literały (`"tekst"`)\
+✅ `&String` działa tylko dla `String`, więc nie przyjmie `&str`
 
 ```rs
 fn powitaj_v0(tab: [i32; 4]) { //bez & musi być rozmiar
@@ -527,7 +563,7 @@ fn main()
     - Rust traktuje tablicę jako **jedną strukturę**, a `t[0]` i `t[2]` to tylko jej elementy.
     - Kompilator wykrywa, że próbujemy pożyczyć różne elementy tej samej tablicy jako mutowalne w tym samym czasie.
     - W Rust mutowalne pożyczanie dotyczy całego obiektu, więc nie można pożyczyć dwóch elementów tablicy jednocześnie jako `&mut`
-- <code><span style="color: cyan">println!("{}", y.unwrap());</code>
+- <code><span style="color: cyan">add_to(&mut x, &x);</code>
     - Funkcja `add_to` wymaga:
         - mutowalnego odniesienia `&mut a`
         - niemutowalnego odniesienia `&b`
@@ -619,7 +655,7 @@ W Rust metody `and()` i `or()` dla `Option<T>` działają analogicznie do operac
 
 Teraz zastanówmy się, dlaczego nie ma `xor()`.
 
-### 1. `XOR` dla wartości logicznych
+#### 1. `XOR` dla wartości logicznych
 Działanie operatora `XOR` (wyłączne OR, "exclusive OR") dla wartości logicznych wygląda tak:
 
 A|B|A ⊕ B
@@ -631,7 +667,7 @@ A|B|A ⊕ B
 
 `XOR` zwraca `true` tylko wtedy, gdy dokładnie jeden z operandów jest `true`.
 
-### 2. Czy `Option<T>` pasuje do `XOR`?
+#### 2. Czy `Option<T>` pasuje do `XOR`?
 Zastosujmy tę logikę do `Option<T>`:
 
 `Option<T>`	|`Option<T>`	|`xor()` wynik?
@@ -720,4 +756,295 @@ fn main() {
 ```
 Operator `?` automatycznie obsługuje błędy, sprawiając, że kod jest czytelniejszy.
 
+# Wykład 6
 
+### Kolokwium:
+- 4-6 zadań (krótkich)
+- krótki program lub funkcja do napisania w każdym
+- materiał:
+    - podstawy programowania strukturalnego: pętle, ify, funkcje, operacje arytmetyczne, logiczne, używanie zmiennych
+    - różne sposoby przekazywania parametrów do funkcji: pożyczki, mutowalność, niemutowalność
+    - używanie napisów: String, str
+    - tablice: Vec, []
+
+### Iteratory:
+- **Iteratory w Rust są leniwe** – oznacza to, że nie wykonują żadnych operacji, dopóki nie zostaną faktycznie użyte (np. w pętli lub metodzie typu `collect`).
+- Pętla `for i in 0..n { v[i] }` iteruje po indeksach i odwołuje się do elementów wektora `v` przez indeksowanie.
+- Pętla `for x in v { x }` przechodzi bezpośrednio po elementach wektora `v`.
+- **Funkcje w Rust wymagają jawnego określenia typu argumentów oraz typu zwracanego.**
+- **Domknięcia (lambdy) przechwytują swoje środowisko**, czyli mogą korzystać z lokalnych zmiennych, które były dostępne w momencie ich utworzenia.
+- **Zwykłe funkcje mogą odwoływać się tylko do globalnych zmiennych**, ale nie do zmiennych lokalnych spoza swojego ciała.
+
+```rs
+for z in "katastrofa".chars().step_by(2) {
+    print!("{} ", z);
+}
+//output: k t s r f
+```
+Metoda `.chars()` zamienia ciąg znaków na iterator, `.step_by()` sprawia że iteracja odbywa się co drugi znak.
+```rs
+for z in [1, 3, 4, 10]
+{
+    print!("{} ", z);
+}
+//output: 1 3 4 10
+```
+Kod iteruje po elementach tablicy [1, 3, 4, 10] i wypisuje każdy z nich. Tablica jest iterowana bezpośrednio, więc wartości są przekazywane bez indeksowania.
+```rs
+for z in [1, 3, 4, 10].iter()
+{
+    print!("{} ", z);
+}
+//output: 1 3 4 10
+```
+To samo co wyżej ale przy użyciu `.iter()`.
+```rs
+for z in (0..).step_by(5)
+{
+    print!("{} ", z);
+}
+//output: 0 5 10 15 20 25 30 35 40 45 50 55 60 65 70 75 80 85 90 95 100 ...
+```
+Kod generuje nieskończoną sekwencję liczb naturalnych, zaczynając od `0`, i wypisuje je, zwiększając co `5` dzięki `.step_by(5)`. Program będzie działał (praiwe) w nieskończoność.
+```rs
+for z in (0..5).chain(50..55)
+{
+    print!("{} ", z);
+}
+//output: 0 1 2 3 4 50 51 52 53 54 
+```
+Kod iteruje najpierw po zakresie `0..5`, a następnie po `50..55`, łącząc je metodą `.chain()`.
+```rs
+let v: Vec<_> = (0..5).chain(50..55).collect();
+print!("{:?}", v);
+//output: [0, 1, 2, 3, 4, 50, 51, 52, 53, 54]
+```
+Kod tworzy wektor `v`, który zawiera liczby z połączonych zakresów `0..5` i `50..55`, używając `.chain()` i `.collect()`. `Vec<_>` to sposób na zadeklarowanie wektora w Rust, gdzie typ elementów wektora jest wnioskowany przez kompilator (dzięki użyciu `_` jako symbolu typu).
+```rs
+let v: std::collections::HashSet<_> = (0..5).chain(50..55).collect();
+print!("{:?}", v);
+```
+Kod tworzy `HashSet` z elementów pochodzących z połączonych zakresów `0..5` oraz `50..55`, używając metody `.chain()` i `.collect()`. `HashSet` automatycznie eliminuje duplikaty, więc w przypadku powtarzających się elementów, zostaną one zapisane tylko raz.\
+**🚨 Uwaga!** `HashSet` przechowuje elementy w nieuporządkowanej kolejności. Ostateczna kolejność elementów może różnić się przy każdym uruchomieniu programu, ponieważ HashSet nie gwarantuje zachowania kolejności.
+```rs
+for z in (0..5).zip(50..55)
+{
+    print!("{:?} ", z);
+}
+//output: (0, 50) (1, 51) (2, 52) (3, 53) (4, 54)
+```
+Metoda `.zip()` łączy elementy z dwóch zakresów: `0..5` i `50..55`, tworząc pary, gdzie pierwszy element pochodzi z pierwszego zakresu, a drugi z drugiego. `.zip()` zwraca krotkę, zawierającą te elementy.
+```rs
+for z in (0..5).zip("buteleczka".chars())
+{
+    print!("{:?} ", z);
+}
+//output: (0, 'b') (1, 'u') (2, 't') (3, 'e') (4, 'l')
+```
+W przypadku, gdy drugi iterator (`"buteleczka".chars()`) jest dłuższy niż pierwszy (`0..5`), metoda `.zip()` zatrzyma się, gdy któryś z iteratorów się skończy. W tym przypadku `0..5` ma tylko 5 elementów, podczas gdy `"buteleczka".chars()` ma więcej znaków. Pary będą tworzone do momentu, gdy skończy się krótszy iterator, czyli `0..5`. Dalsze znaki w `"buteleczka"` nie będą już dołączane do wyników.
+```rs
+for z in (0..).zip("buteleczka".chars())
+{
+    print!("{:?} ", z); 
+}
+//output: (0, 'b') (1, 'u') (2, 't') (3, 'e') (4, 'l') (5, 'e') (6, 'c') (7, 'z') (8, 'k') (9, 'a')
+```
+W przypadku, gdy używamy nieskończonego zakresu (`0..`) w połączeniu z iteratorami z `"buteleczka".chars()`, `.zip()` będzie tworzyć pary aż do momentu, gdy skończy się drugi iterator, czyli `chars()` z `"buteleczka"`. Ponieważ długość `"buteleczka"` to 11 znaków, pętla zatrzyma się po 11 iteracjach.
+```rs
+for z in "buteleczka".chars().enumerate()
+{
+    print!("{:?} ", z);
+}
+//output: (0, 'b') (1, 'u') (2, 't') (3, 'e') (4, 'l') (5, 'e') (6, 'c') (7, 'z') (8, 'k') (9, 'a')
+```
+Metoda `.enumerate()` iteruje po elementach ciągu, zwracając pary, gdzie pierwszy element to indeks, a drugi to wartość (w tym przypadku znak). Dzięki temu możemy uzyskać zarówno indeks, jak i znak.
+```rs
+for (i, x) in "buteleczka".chars().enumerate()
+{
+    print!("{i} {x} ",);
+}
+//output: 0 b 1 u 2 t 3 e 4 l 5 e 6 c 7 z 8 k 9 a
+```
+Działa to tak samo jak poprzednio, ale tym razem krotka `(indeks, znak)` jest od razu rozpakowywana w zmienne `i` i `x` w każdej iteracji. Dzięki temu nie trzeba odwoływać się do elementów krotki osobno.
+```rs
+for z in "buteleczka".chars().take(5)
+{
+    print!("{:?} ",z );
+}
+//output: 'b' 'u' 't' 'e' 'l' 
+```
+W tym przypadku, metoda `.take(5)` ogranicza liczbę elementów do pierwszych `5` znaków z łańcucha `"buteleczka"`. Dzięki temu, pętla iteruje tylko po pierwszych pięciu znakach.
+```rs
+for z in (0..).take(5)
+{
+    print!("{:?} ",z );
+}
+//output: 0 1 2 3 4
+```
+W tym przypadku, metoda `.take(5)` ogranicza liczbę elementów do pierwszych 5 z nieskończonego zakresu (`0..`). Pętla więc wypisuje pierwsze pięć liczb naturalnych zaczynając od 0. Metoda `.take(5)` zatrzymuje iterację po 5 elementach, nawet jeśli zakres jest nieskończony.
+```rs
+let x = "buteleczka".chars().min();
+let y = "buteleczka".chars().max();
+println!("{:?}", x);
+//output: Some('a')
+println!("{:?}", y);
+//output: Some('z')
+```
+Metody `.min()` i `.max()` w Rust działają na iteratorach i zwracają najmniejszy lub największy element w kolekcji, zgodnie z porównaniem domyślnym (np. dla znaków według porządku leksykalnego).
+W tym przypadku, dla łańcucha `"buteleczka"`, `.min()` znajdzie najmniejszy znak, a `.max()` największy.
+Zwrócone wartości są typu `Option<...>`, dlatego nawet jeśli mamy wynik, jest to opakowane w `Some(...)`.
+```rs
+let x = "".chars().min();
+let y = "".chars().max();
+println!("{:?}", x);
+//output: None
+println!("{:?}", y);
+//output: None
+```
+Wprzypadku pustego łańcucha `""`, zarówno `.min()`, jak i `.max()` nie znajdą żadnych elementów, ponieważ iterator `.chars()` na pustym ciągu nie zawiera żadnych znaków. Obie metody zwrócą `None`.
+```rs
+let s :u16 = [1, 4, 36].iter().sum();
+println!("{:?}", s);
+//output: 41
+```
+W tym przypadku, metoda `.sum()` jest używana do zsumowania wartości z iteratora, który pochodzi z tablicy `[1, 4, 36]`.
+```rs
+let s :u8 = [].iter().sum();
+println!("{:?}", s);
+//output: 0
+```
+W tym przypadku, kod próbuje zsumować elementy z pustej tablicy `[]`. Metoda `.sum()` działa na iteratorze, ale ponieważ tablica jest pusta, wynik sumy będzie wynosił `0`.
+```rs
+fn podnies_do_kwadratu(n: i32) -> i32
+{
+    n*n
+}
+
+fn main() {
+    let v :Vec<_> = (0..).map(podnies_do_kwadratu).take(5).collect();
+    println!("{:?}", v);
+    //output: [0, 1, 4, 9, 16]
+}
+```
+W tym przypadku, funkcja `podnies_do_kwadratu` przyjmuje liczbę typu `i32` i zwraca jej kwadrat. W funkcji `main`, używamy tego jako funkcji przekazywanej do metody `.map()`, która podnosi każdą liczbę z zakresu `0..` do kwadratu.
+- `.map(podnies_do_kwadratu)` stosuje funkcję `podnies_do_kwadratu` do każdego elementu w iteratorze.
+- `.take(5)` ogranicza liczbę elementów do pierwszych 5 wyników.
+- `.collect()` zbiera wyniki w wektorze.
+```rs
+let v :Vec<_> = (0..).map(|x| x * x).take(5).collect();
+println!("{:?}", v);
+//output: [0, 1, 4, 9, 16]
+```
+W tym przypadku, używamy lambdy `|x| x * x`, która przyjmuje argument `x` i zwraca jego kwadrat, aby zastosować ją w metodzie `.map()` na zakresie `0..`. Dzięki temu, każda liczba w zakresie jest podnoszona do kwadratu, a wynik jest zbierany do wektora za pomocą `.take(5)` i `.collect()`.
+```rs
+let mut a = 4;
+let v :Vec<_> = (0..).map(|x| x + 2 + a).take(5).collect();
+println!("{:?}", v);
+//output: [6, 7, 8, 9, 10]
+```
+ Funkcja lambda `|x| x + 2 + a` dodaje do każdej liczby z zakresu `0..` wartość 2 oraz zmienną `a`. Zmienna `a` jest dostępna wewnątrz lambdy, mimo że została zadeklarowana poza nią, ponieważ lambda w Rust może "zamykać" (capture), "przechwytywać" zmienne z otaczającego ją środowiska i używać ich w swoim ciele.
+ ```rs
+let v :Vec<_> = (1..=10).map(|n| n * n).collect();
+println!("{:?}", v);
+//output: [1, 4, 9, 16, 25, 36, 49, 64, 81, 100]
+ ```
+W tym przypadku, kod wykorzystuje zakres `1..=10`, który generuje liczby od 1 do 10 włącznie, podnosi je do kwadratu i zapisuje do wektora.
+```rs
+let v :Vec<_> = (1..=100).filter(|n| n % 10 == 1).collect();
+println!("{:?}", v);
+//output: [1, 11, 21, 31, 41, 51, 61, 71, 81, 91]
+```
+W tym przypadku, zakres `1..=100` generuje liczby od 1 do 100 (w tym 100). Metoda `.filter(|n| n % 10 == 1)` filtruje liczby, wybierając tylko te, które mają resztę 1 po podzieleniu przez 10 (czyli liczby kończące się na 1). `.collect()` zbiera wyniki do wektora.
+```rs
+let x: Option<i32> = (1..=100).reduce(|acc, x| acc + x);
+println!("{:?}", x);
+//output: Some(5050)
+```
+Metoda `.reduce(|acc, x| acc + x)` działa podobnie do .sum(), ale zwraca wynik jako `Option<i32>`. Działa w ten sposób:
+- `acc` (akumulator) zaczyna się od pierwszego elementu (tutaj 1).
+- `x` to kolejne elementy z zakresu `1..=100`.
+- W każdej iteracji do `acc` dodawana jest wartość `x`, aż do przetworzenia wszystkich elementów.
+
+Ponieważ zakres `1..=100` nie jest pusty, `.reduce()` zwróci `Some(wynik)`.
+
+```rs
+let x: Option<i32> = (1..=100).filter(|n|n>&100000).reduce(|acc, x|acc+x);
+println!("{:?}", x);
+//output: None
+```
+Jeśli iterator jest pusty, `.reduce()` zwróci `None`.
+```rs
+let x: i32 = (1..=100).fold(0, |acc, x|acc+x);
+println!("{:?}", x);
+//output: 5050
+```
+Metoda `.fold(0, |acc, x| acc + x)` zaczyna z wartością początkową `0` i dla każdego elementu z zakresu `1..=100` dodaje go do akumulatora `acc`. Dzięki temu zawsze zwraca wynik, nawet jeśli iterator jest pusty, w przeciwieństwie do `.reduce()`, które mogłoby zwrócić `None`.
+```rs
+let x= (16..=100).find(|n| n%6==0 && n%15 ==0);
+println!("{:?}", x);
+//output: Some(30)
+```
+Metoda `.find(|n| n % 6 == 0 && n % 15 == 0)` przeszukuje zakres `16..=100` i zwraca pierwszą liczbę podzielną zarówno przez 6, jak i 15. Jeśli w zakresie nie byłoby takiej liczby, wynik byłby `None`.
+```rs
+let x= (16..=100).rfind(|n| n%6==0 && n%15 ==0);
+println!("{:?}", x);
+//output: Some(90)
+```
+Metoda `.rfind(...)` działa tak samo jak `.rev().find(...)`, odwraca kolejność iteracji, dzięki czemu znajduje największą liczbę spełniającą warunek zamiast pierwszej. W tym przypadku zwróci `Some(90)`, ponieważ jest to największa liczba w zakresie `16..=100`, podzielna zarówno przez 6, jak i 15.
+```rs
+let v: Option<_> = (1..=100).find(|n| n % 10 != 5);
+println!("{:?}", v);
+//output: Some(1)
+```
+Podkreślenie (`_`) w `Option<_>` oznacza, że kompilator sam wywnioskuje typ wartości wewnątrz `Option`. W tym przypadku `.find(...)` zwraca `Option<i32>`, ale ponieważ `v` nie jest explicite zadeklarowane jako `Option<i32>`, kompilator automatycznie dobiera właściwy typ (`i32`). Jest to przydatne, gdy nie chcemy ręcznie określać typu lub gdy może on się zmieniać w zależności od kontekstu.
+```rs
+let v: Vec<_> = (1..=100).filter(|n| n % 10 != 5).collect();
+println!("{:?}", v);
+//output: [1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 18, 19, 20, 21, 22, 23, 24, 26, 27, 28, 29, 30, 31, 32, 33, 34, 36, 37, 38, 39, 40, 41, 42, 43, 44, 46, 47, 48, 49, 50, 51, 52, 53, 54, 56, 57, 58, 59, 60, 61, 62, 63, 64, 66, 67, 68, 69, 70, 71, 72, 73, 74, 76, 77, 78, 79, 80, 81, 82, 83, 84, 86, 87, 88, 89, 90, 91, 92, 93, 94, 96, 97, 98, 99, 100]
+```
+Metoda `.filter(|n| n % 10 != 5)` odrzuca wszystkie liczby kończące się na `5`, a `.collect()` zbiera pozostałe do wektora `Vec<_>`, gdzie podkreślenie `_` pozwala kompilatorowi samodzielnie wywnioskować typ elementów (`i32`). W wyniku otrzymujemy wektor liczb od `1` do `100`, ale bez tych, które kończą się na `5`.
+```rs
+let v: Vec<_> = (1..=100).take_while(|n| n % 10 != 5).collect();
+println!("{:?}", v);
+//output: [1, 2, 3, 4]
+```
+Metoda `.take_while(|n| n % 10 != 5)` zbiera liczby z zakresu `1..=100`, dopóki nie natrafi na liczbę, która kończy się na `5`. Po napotkaniu liczby kończącej się na `5` (czyli `5`), zbieranie zostaje zakończone.
+```rs
+let v: Vec<_> = (1..=100).skip_while(|n| n % 10 != 5).collect();
+println!("{:?}", v);
+//output: [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100]
+```
+Metoda `.skip_while(|n| n % 10 != 5)` pomija wszystkie liczby w zakresie `1..=100`, które nie kończą się na `5`, aż napotka pierwszą liczbę, która kończy się na `5`. Po tym, jak napotka liczbę kończącą się na `5`, zbiera pozostałe liczby, w tym tę, która spełnia warunek.
+```rs
+let x = (1..).map(|x| 1.0 / (x as f64)).find(|x| x < &0.03);
+println!("{:?}", x);
+//output: Some(0.029411764705882353)
+```
+Metoda `.map(|x| 1.0 / (x as f64))` przekształca liczby z zakresu `1..` na odwrotności tych liczb, konwertując je na typ `f64`. Następnie `.find(|x| x < &0.03)` szuka pierwszego elementu w tej sekwencji, który jest mniejszy niż `0.03`.
+```rs
+let x = (1..).map(|x| 1.0 / (x as f64)).enumerate().find(|x| x.1 < 0.03);
+println!("{:?}", x);
+//output: Some((33, 0.029411764705882353))
+```
+Metoda `.map(|x| 1.0 / (x as f64))` przekształca liczby z zakresu `1..` na odwrotności liczb, konwertując je na typ `f64`. Następnie `.enumerate()` dodaje do każdego elementu numer indeksu (pozycję w iteracji). Metoda `.find(|x| x.1 < 0.03)` szuka pierwszego elementu, którego wartość (zwracana przez `x.1`, czyli odwrotność) jest mniejsza niż `0.03`.
+```rs
+let x = (10..20).all(|x| x > 0);
+println!("{:?}", x);
+//output: true
+let x = (10..20).any(|x| x > 15);
+println!("{:?}", x);
+//output: true
+let x = (10..).all(|x| x < 20);
+println!("{:?}", x);
+//output: false
+let x = (10..).any(|x| x < 20);
+println!("{:?}", x);
+//output: true
+```
+Metoda `.all()` sprawdza, czy wszystkie elementy w danym iteratorze spełniają określony warunek. Zwraca wartość logiczną (`true` lub `false`), zależnie od tego, czy warunek jest spełniony dla każdego elementu w kolekcji.\
+Metoda `.any()` sprawdza, czy przynajmniej jeden element w danym iteratorze spełnia określony warunek. Zwraca wartość logiczną (`true` lub `false`), zależnie od tego, czy istnieje przynajmniej jeden element spełniający warunek.
+```rs
+(1..10).for_each(|x| print!("{:?} ", x));
+//output: 1 2 3 4 5 6 7 8 9 
+```
+Metoda `.for_each()` służy do iterowania po wszystkich elementach iteratora i wykonania na nich podanej operacji.
