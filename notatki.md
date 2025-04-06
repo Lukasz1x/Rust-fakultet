@@ -4,18 +4,35 @@
 2. [Typy danych i zmienne w Rust](#typy-danych-i-zmienne-w-rust)
 3. [Operatory w Rust](#operatory-w-rust)
 4. [Struktury sterujące w Rust](#struktury-sterujące-w-rust)
+5. [Funkcje w Rust](#funkcje-w-rust)
 
 
 # Komendy cargo
-```
-cargo new [nazwa]           tworzy projekt w nowym katalogu o podanej nazwie
-cargo init                  tworzy projekt w aktualnym katalogu
-    --vcs none              po dodaniu projekt jest tworzony bez repozytorium git
+### ***Tworzenie nowego projektu***
+`cargo new [nazwa]`\
+Tworzy nowy projekt w katalogu o podanej nazwie. Tworzony katalog zawiera plik manifestu `Cargo.toml`, katalog `src/` z plikiem `main.rs` (lub `lib.rs` dla biblioteki) oraz domyślnie inicjalizuje repozytorium Git.
 
-cargo build                 kompilacja
-cargo run                   uruchamianie (automatyczna kompilacja, jeśli plik był zmieniony od poprzedniej kompilacji)
-./target/debug/program      uruchamianie bez kompilacji
-```
+`cargo init`\
+Inicjalizuje nowy projekt w aktualnym katalogu, dodając plik `Cargo.toml` oraz strukturę plików zgodną z Rustem.
+
+`--vcs none`\
+Wyłącza domyślną inicjalizację repozytorium Git. Użyteczne, gdy nie chcemy, aby Cargo automatycznie tworzyło repozytorium wersjonowania.
+### ***Budowanie i uruchamianie projektu***
+`cargo build`\
+Kompiluje projekt w trybie debug i zapisuje wynikowy plik binarny w katalogu `target/debug/.`
+
+`cargo run`\
+Kompiluje i uruchamia program. Jeśli kod źródłowy został zmieniony od ostatniej kompilacji, Cargo automatycznie ponownie skompiluje projekt przed uruchomieniem.
+
+`./target/debug/[nazwa_programu]`\
+Uruchamia skompilowany program ręcznie, bez ponownej kompilacji. Użyteczne, gdy chcemy szybko uruchomić program bez angażowania Cargo.
+
+### ***Analiza i formatowanie kodu***
+`cargo clippy`\
+Uruchamia narzędzie Clippy, które analizuje kod i sugeruje poprawki zgodnie z najlepszymi praktykami Rusta. Pomaga unikać błędów, optymalizować kod i poprawiać jego czytelność.
+
+`cargo fmt`\
+Automatycznie formatuje kod zgodnie z oficjalnym stylem Rusta przy użyciu narzędzia rustfmt. Zapewnia spójność formatowania w całym projekcie.
 
 # Podstawowe elementy składni w Rust
 ### Struktura programu
@@ -152,7 +169,67 @@ fn main() {
 
 # Operatory w Rust
 
-Work in progress ...
+Rust obsługuje różne typy operatorów, w tym arytmetyczne, porównania, logiczne, bitowe, przypisania i inkrementacji/dekrementacji.
+
+### Operatory arytmetyczne
+Rust wspiera standardowe operatory matematyczne.
+Operator	|Opis	|Przykład	|Wynik
+--|--|--|--
+`+`|Dodawanie	|`5 + 3`	|`8`
+`-`|Odejmowanie	|`10 - 4`	|`6`
+`*`|Mnożenie	|`3 * 4`	|`12`
+`/`|Dzielenie	|`10 / 2`	|`5`
+`%`|Modulo (reszta z dzielenia)	|`10 % 3`	|`1`
+```rs
+let a = 5;
+let b = 2;
+println!("Dodawanie: {}", a + b);   // 7
+println!("Dzielenie: {}", a / b);   // 2 - dzelenie liczb całkowitych zwraca wynik zaokrąglony w dół
+```
+### Operatory porównania
+Porównania zwracają `true` lub `false`.
+Operator	|Opis	|Przykład	|Wynik
+--|--|--|--
+`==`	|Równość	|`5 == 5`	|`true`
+`!=`	|Różne	|`5 != 3`	|`true`
+`>`	|Większe	|`7 > 3`	|`true`
+`<`	|Mniejsze	|`2 < 8`	|`true`
+`>=`	|Większe lub równe	|`5 >= 5`	|`true`
+`<=`	|Mniejsze lub równe	|`3 <= 4`	|`true`
+```rs
+let x = 10;
+let y = 20;
+println!("Czy x jest większe od y? {}", x > y);     //false
+```
+### Operatory logiczne
+Służą do operacji na wartościach logicznych (`bool`).
+Operator	|Opis	|Przykład	|Wynik
+--|--|--|--
+`&&`	|AND (i)	|`true && false`	|`false`
+`\|\|`	|OR (lub)   |`true \|\| false`  |`true`
+`!`	|NOT (negacja)	|`!true`	|`false`
+
+### Operatory bitowe
+Działają na poziomie bitów liczby.
+Operator	|Opis	|Przykład (`a = 0b1100`, `b = 0b1010`)	|Wynik
+--|--|--|--
+`&`	|AND	|`a & b`	|`0b1000 (8)`
+`\|`|OR	| `a \| b` | `0b1110 (14)`
+`^`	|XOR	|`a ^ b`	|`0b0110 (6)`
+`~`	|NOT	|`!a`	|`(-13, bo U2 na 32 bit)`
+`<<`	|Przesunięcie w lewo	|`a << 1`	|`0b11000 (24)`
+`>>`	|Przesunięcie w prawo	|`a >> 1`	|`0b0110 (6)`
+🚨 Przesunięcie bitowe `<<` i `>>` może powodować utratę bitów!
+
+### Operatory przypisania
+Operator	|Opis	|Przykład	|Równoważne
+--|--|--|--
+`=`	|Przypisanie	|`x = 5`	|`x = 5`
+`+=`	|Dodaj i przypisz	|`x += 2`	|`x = x + 2`
+`-=`	|Odejmij i przypisz	|`x -= 3`	|`x = x - 3`
+`*=`	|Pomnóż i przypisz	|`x *= 4`	|`x = x * 4`
+`/=`	|Podziel i przypisz	|`x /= 2`	|`x = x / 2`
+`%=`	|Modulo i przypisz	|`x %= 3`	|`x = x % 3`
 
 # Struktury sterujące w Rust
 Struktury sterujące pozwalają na kontrolowanie przepływu programu. W Rust mamy:
@@ -303,3 +380,58 @@ fn podwoj(x: i32) -> i32 {
 }
 ```
 🚨 Bez `;` (bo inaczej zwraca `()` zamiast wartości).
+
+# Funkcje w Rust
+
+Funkcje w Rust są podstawowymi blokami kodu i mogą przyjmować argumenty, zwracać wartości oraz mieć różne sposoby przekazywania parametrów.
+
+### Deklaracja i definicja funkcji
+
+Funkcję definiuje się za pomocą słowa kluczowego `fn`.
+
+```rs
+fn nazwa() {
+    println!("To jest funkcja!");
+}
+
+fn main() {
+    nazwa();    // Wywołanie funkcji
+}
+```
+✅ Rust używa `snake_case` do **nazw funkcji** (np. `moja_funkcja`).
+
+### Argumenty funkcji
+Funkcja może przyjmować argumenty i określać ich typy
+
+```rs
+fn powitanie(imie: &str) {
+    println!("Cześć, {}!", imie);
+}
+
+fn main() {
+    powitanie("Alice");
+}
+```
+✅ Rust wymaga jawnego określenia typów argumentów.
+
+🚨 Argumenty przekazywane przez wartość są kopiowane (dla typów Copy) lub przenoszone (dla typów bez Copy).
+
+### Zwracanie wartości
+Funkcja może zwracać wartość, określając jej typ po `->`.
+```rs
+fn podwoj(x: i32) -> i32 {
+    x * 2       // Brak średnika – ostatnia instrukcja to wartość zwracana
+}
+
+fn main() {
+    let wynik = podwoj(5);
+    println!("Wynik: {}", wynik);
+}
+```
+✅ Brak `;` na końcu sprawia, że Rust traktuje to jako wartość zwracaną.
+✅ Można też użyć `return`, ale nie jest to konieczne.
+```rs
+fn podwoj(x: i32) -> i32 {
+    return x * 2;
+}
+```
