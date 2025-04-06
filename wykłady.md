@@ -78,7 +78,7 @@ let a = 10;
 let b = 20;
 let x = if a<b {30} else {0};
 ```
-Nawiasy klamrowe przyjmują wartość ostatniej wartości po ***ostatnim średniku*** (jak nie ma średnika to jest zwracane wsystko co jest w nawiasch klamrowych). 
+Nawiasy klamrowe przyjmują wartość ostatniej wartości po ***ostatnim średniku*** (jak nie ma średnika to jest zwracane wszystko co jest w nawiasch klamrowych). 
 Dla poniższego przykładu zwracay jest `y` lub `0`.
 ```rs
 let x = if a<b {let y = 30; y} else {0}
@@ -86,23 +86,23 @@ let x = if a<b {let y = 30; y} else {0}
 Tryb debugerski
 ```rs
 let a = 'x';
-println!("{}", a)           //output: x
-println!("{:?}", a)         //output: 'x'
+println!("{}", a)           // output: x
+println!("{:?}", a)         // output: 'x'
 ```
 
 ```rs
-let a = 'ń';                //typ znakowy (char) ma 4 bajty
-println!("{}", a)           //output: ń
-println!("{:?}", a)         //output: 'ń'
-println!("{}", a as u32)    //outpyt: 324
+let a = 'ń';                // typ znakowy (char) ma 4 bajty
+println!("{}", a)           // output: ń
+println!("{:?}", a)         // output: 'ń'
+println!("{}", a as u32)    // output: 324
 ```
 Sposoby zapisywania liczb:
 ```rs
-let a  = 1_000_003;         //1000003
-let b = 0xfa;               //250 
-let c = 0o721;              //465
-let d =0b0011_1010;         //58
-let e =b'a';                //97 - pod e zostanie przypisana wartość litery 'a' z tabeli ASCII
+let a = 1_000_003;          // 1000003
+let b = 0xfa;               // 250 
+let c = 0o721;              // 465
+let d = 0b0011_1010;        // 58
+let e = b'a';               // 97 - pod e zostanie przypisana wartość litery 'a' z tabeli ASCII
 ```
 Pętla nieskończona:
 ```rs
@@ -111,7 +111,7 @@ loop{
 }
 ```
 
-Pętla `loop` musi się wykonać raz lub do pierwszej instrukcji `break`, dlatego dozwolone jest zwracanie wartości przez `break`,natomiast pętla `while` może wcale się nie wywołać dlatego w niej nie jest dopuszczony `break` ze zwracaniem.
+Pętla `loop` musi się wykonać raz lub do pierwszej instrukcji `break`, dlatego dozwolone jest zwracanie wartości przez `break`, natomiast pętla `while` może wcale się nie wywołać (warunek nigdy nie jest spełniony, np. `1 > 2`), dlatego w niej nie jest dopuszczony `break` ze zwracaniem.
 
 ```rs
 let mut i = 0;
@@ -136,7 +136,7 @@ print!("{x:?}");            // output: 0 1 2 3 4 5 6 7 8 9 ()
 let mut i = 0;
 let x = loop {
     if i >= 10 {
-        break 999;          //break może zwracać wartość tylko w przypadku pętli loop
+        break 999;          // break może zwracać wartość tylko w przypadku pętli loop
     }
     print!("{i} ");
     i+=1;
@@ -148,7 +148,7 @@ print!("{x:?}");            // output: 0 1 2 3 4 5 6 7 8 9 999
 ```rs
 fn powiekszona_o_1_v1(x :i32) -> i32
 {
-    x+1                     //można pisać return x+1;
+    x+1                     // można pisać return x+1;
 }
 
 fn powiekszona_o_1_v2(mut x :i32) -> i32
@@ -181,11 +181,51 @@ fn main() // ->()  main zwraca wartość pustą
 
 # Wykład 3
 Przekazywanie parametru:
-- na własnośc (przez wartość)
+- na własność (przez wartość)
     - przez kopiowanie
     - przez przeniesienie
 - przez pożyczkę/referencję `&`
 - przez pożyczkę/referencję mutowalną `&mut`
+
+| Deklaracja | Zmienna mutowalna? | Referencja mutowalna? | Mozna zmieniac zawartosc? | Mozna zmieniac referencje? | Na chłopski rozum |
+|--------------------|--------------------|------------------------|----------------------------|-----------------------------|--
+| `x: &i32` | ❌ NIE | ❌ NIE | ❌ NIE | ❌ NIE | stały wskaźnik na stałą
+| `mut x: &i32` | ✅ TAK | ❌ NIE | ❌ NIE | ✅ TAK | zmienny wskaźnik na stałą (zmienny, ponieważ w trakcie działania programu można zmienić na co wskazuje)
+| `x: &mut i32` | ❌ NIE | ✅ TAK | ✅ TAK | ❌ NIE | stały wskaźnik na zmienną (wskaźnik cały czas wskazuje na jedną zmienną, ale przez dereferencję `*` można zmienić wartość tej zmiennej)
+| `mut x: &mut i32` | ✅ TAK | ✅ TAK | ✅ TAK | ✅ TAK | zmienny wskaźnik na zmienną (czyli można zmienić na co wskazuje i można zmienić wartość tej zmiennej)
+```rs
+let a = 5;
+let x: &i32 = &a;   // &a - ampersand, żeby móc przypisać adres a pod x
+println!("{}", *x); // out: 5
+// 🚨 w wypisywaniu działa bez gwiazdki, ale nie jest to do końca poprawne więc lepiej dać tę gwiazdkę
+
+
+let b = 6;
+let mut y: &i32 = &b;
+println!("{}", *y); // out: 6
+y = x;
+println!("{}", *y); // out: 5
+y = &b;
+println!("{}", *y); // out: 6
+
+
+let mut c = 7;
+let z: &mut i32 = &mut c; // przy mutowalnej referencji trzeba to podkreślić i dopisać mut (wszystko w Rust musi być intencjonalne i jawne, a nie przypadkowe)
+println!("{}", *z); // out: 7
+*z += 1;
+println!("{}", *z); // out: 8
+
+
+let mut w: &mut i32 = &mut c;
+println!("{}", *w); // out: 8
+*w += 1;
+println!("{}", *w); // out: 9
+let mut d = 10;
+w = &mut d;
+println!("{}", *w); // out: 10
+*w += 1;
+println!("{}", *w); // out: 11
+```
 
 ```rs
 fn swap(x: &mut i32, y: &mut i32)
@@ -229,9 +269,9 @@ fn powitaj_v3(imie: &str) {
 }
 
 fn main() {
-    powitaj_v1("Edek"); //nie zadziała, bo Edek jest (&?)str, a String to struct
-    powitaj_v2("Edek"); //nie zadziała, bo Edek jest &str, a funkcja przyjmuje str, jest tu jakiś problem, że str ma rozmiar nieznany podczas kompilacji??
-    powitaj_v3("Edek"); //zadziała
+    powitaj_v1("Edek"); // nie zadziała, bo Edek jest &str, a String to struct
+    powitaj_v2("Edek"); // nie zadziała, bo Edek jest &str, a funkcja przyjmuje str, jest tu jakiś problem, że str ma rozmiar nieznany podczas kompilacji??
+    powitaj_v3("Edek"); // zadziała
 }
 ```
 ### Analiza wersji funkcji powitalnych
@@ -254,11 +294,8 @@ fn main() {
 - `String` jest przekazywany na własność, ale `&str` jest lekką referencją, co czyni je bardziej uniwersalnym wyborem dla funkcji akceptujących tekst.
 
 ```rs
-fn powitaj_v1(imie: &str) //uzywanie &str jest bardziej użytecznie w nagłówku funkcji niż &String 
-{ 
-    println!("Witaj, {imie}!")
-}
-fn powitaj_v1(imie: &String) {
+fn powitaj_v1(imie: &str) // używanie &str jest bardziej użytecznie w nagłówku funkcji niż &String
+{
     println!("Witaj, {imie}!")
 }
 
@@ -266,16 +303,20 @@ fn powitaj_v2(imie: String) {
     println!("Witaj, {imie}!")
 }
 
+fn powitaj_v3(imie: &String) {
+    println!("Witaj, {imie}!")
+}
 
 
-fn main() {
+// wszystko działa
+fn main() { 
     powitaj_v1("Edek");
-    let imie1 ="Felek".to_string();
-    let imie2 =String::from("Balbina");
-    powitaj_v2(&imie1);
-    powitaj_v3(imie2.clone()); //String jest potencjalnie bardzo dużą wartością, więc nie ma kopiowania stringów, żeby programista zrobił to sam pisząc .clone()
-    powitaj_v1(&imie1); //dozwolona jest konwersja z &String na &str
-    powitaj_v1(&imie2); //jest nie jawna konwersja typów
+    let imie1 = "Felek".to_string();
+    let imie2 = String::from("Balbina");
+    powitaj_v3(&imie1);
+    powitaj_v2(imie2.clone()); // String jest potencjalnie bardzo dużą wartością, więc nie ma kopiowania stringów, żeby programista zrobił to sam pisząc .clone()
+    powitaj_v1(&imie1); // dozwolona jest niejawna (automatyczna) konwersja z &String na &str
+    powitaj_v1(&imie2); // to samo co wyżej
 }
 ```
 - `String` nie implementuje `Copy`, więc jego przekazanie do funkcji przenosi własność.
@@ -290,47 +331,88 @@ Jeśli funkcja ma przyjmować tekst, lepiej używać `&str` niż `&String`, poni
 ✅ `&String` działa tylko dla `String`, więc nie przyjmie `&str`
 
 ```rs
-fn powitaj_v0(tab: [i32; 4]) { //bez & musi być rozmiar
-    println!("Witaj, {tab:?}!") 
-}
-fn powitaj_v1(tab: &[i32]) { 
-    println!("Witaj, {tab:?}!")
-}
-fn powitaj_v1(tab: &Vec<i32>) {
+fn powitaj_v0(tab: [i32; 4]) { // bez & musi być rozmiar
     println!("Witaj, {tab:?}!")
 }
 
-fn powitaj_v2(tab: Vec<i32>) {
+fn powitaj_v1(tab: &[i32]) {
     println!("Witaj, {tab:?}!")
 }
 
+fn powitaj_v2(tab: &Vec<i32>) {
+    println!("Witaj, {tab:?}!")
+}
 
+fn powitaj_v3(tab: Vec<i32>) {
+    println!("Witaj, {tab:?}!")
+}
 
 fn main() {
-    let tab0 = [1,4,90,34];
-    powitaj_v0(tab0);
-    powitaj_v1(&[15,3,20]);
+    let tab0 = [1,4,90,34]; 
+    powitaj_v0(tab0);               // out: Witaj, [1, 4, 90, 34]!
+    powitaj_v1(&tab0);              // out: Witaj, [1, 4, 90, 34]!
+    powitaj_v1(&[15,3,20]);         // out: Witaj, [15, 3, 20]!
     let tab1 = vec![3,5,7,10,3,4,5,6];
     let tab2 = Vec::from([4,10,3,9,87]);
-    powitaj_v2(&tab1);
-    powitaj_v3(tab2.clone());
-    powitaj_v1(&tab1); 
-    powitaj_v1(&tab2); 
+    powitaj_v2(&tab1);              // out: Witaj, [3, 5, 7, 10, 3, 4, 5, 6]!
+    powitaj_v3(tab2.clone());       // out: Witaj, [4, 10, 3, 9, 87]!
+    powitaj_v1(&tab1);              // out: Witaj, [3, 5, 7, 10, 3, 4, 5, 6]!
+    powitaj_v1(&tab2);              // out: Witaj, [4, 10, 3, 9, 87]!
 }
 ```
+📌 `powitaj_v0(tab: [i32; 4])`
+- **Argument:** Oczekuje tablicy o stałym rozmiarze `[i32; 4]`.
+- Tablica w Rust ma stały rozmiar, więc ta funkcja przyjmuje dokładnie tablicę o czterech elementach.
+
+📌 `powitaj_v1(tab: &[i32])`
+- **Argument:** Przyjmuje referencję do ciagu `i32` (`&[i32]`), czyli tablicy o zmiennym rozmiarze.
+- Funkcja działa, bo `&[i32]` to **referencja do jakiejkolwiek tablicy (lub wektora)** typu `i32`.
+- ***Jest to najbardziej uniwersalny sposób zapisu.***
+
+📌 `powitaj_v2(tab: &Vec<i32>)`
+- **Argument:** Przyjmuje referencję do wektora `Vec<i32>`.
+- Musisz przekazać referencję (`&tab1`), ponieważ funkcja oczekuje referencji do wektora, a nie samego wektora. Dzięki referencji nie kopiujesz wektora, co jest bardziej wydajne.
+
+📌 `powitaj_v3(tab: Vec<i32>)`
+- **Argument:** Przyjmuje wektor `Vec<i32>` przez wartość.
+- ❗ Czy `Vec` jest kopiowany?
+    - Ważne: `Vec<i32`> nie implementuje `Copy`, tylko `Clone`. To oznacza, że przekazanie `Vec` przez wartość nie robi fizycznej kopii danych ze sterty, tylko przenosi `ownership` wskaźników i danych, ***a oryginał nie może być używany po przekazaniu.***
+    - Ale jeśli wywołasz `tab2.clone()`, wtedy:
+        - Rust **tworzy nową kopię danych na stercie**, czyli wszystko jest zdublowane.
+        - Oryginalny `tab2` zostaje nietknięty i można go nadal używać.
+    - Koszt `clone()`: jeśli wektor zawiera dużo danych — `clone()` może być drogi czasowo i pamięciowo, bo kopiuje wszystko.
+        ```rs
+        let tab2 = Vec::from([1, 2, 3]);
+        powitaj_v3(tab2.clone());  // działa, bo przekazujemy **kopię** - ta linia zamiast tej poniżej
+        powitaj_v3(tab2);    // tab2 jest przenoszone
+        powitaj_v1(&tab2);   // ❌ Błąd: tab2 już nie należy do main()!
+        ```
+        
 ```rs
 fn wyswietl_jeden(t: &[i32], i: usize){
     println!("{}", t[i]);
 }
 
 fn main() {
-    let tab0 = [1,4,90,34];
+    let tab0 = [1, 4, 90, 34];
     println!("{}", tab0[2]); 
-    wyswietl_jeden(&tab0, 12); //program spanikuje
+    wyswietl_jeden(&tab0, 12); // program spanikuje, ponieważ próbuje odwołać się poza indeksem tablicy
 }
 ```
+#### Różne sposoby tworzenia tablic:
 ```rs
-let tab = [0;6]; //stworzenie tablcy o 6 elementach równych 0
+// Tablica z powtórzonymi wartościami [wartość; ile_razy]
+let tab = [0; 6];                   // [0, 0, 0, 0, 0, 0]       typ: [i32; 6]
+let jedynki = [1; 4];               // [1, 1, 1, 1]             typ: [i32; 4]
+let zera_bool = [false; 3];         // [false, false, false]    typ: [bool; 3]
+
+// Tablica z konkretnymi wartościami
+let liczby = [10, 20, 30, 40];      // [10, 20, 30, 40]         typ: [i32; 4]
+let znaki = ['a', 'b', 'c'];        // ['a', 'b', 'c']          typ: [char; 3]
+
+// Tablica z jawnie określonym typem
+let liczby: [i32; 3] = [5, 6, 7];   // [5, 6, 7]
+let znaki: [char; 2] = ['x', 'y'];  // ['x', 'y']
 ```
 
 # Wykład 4
