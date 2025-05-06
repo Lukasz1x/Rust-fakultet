@@ -1389,109 +1389,8 @@ let p6 = Punkt3D {
 - Przykład użycia `..default()` z nadpisaniem pojedynczego pola.
 
 
-### Całość wyżej opisywanego kodu:
-```rs
-#[derive(PartialEq, Debug, Clone, Default)]
-struct Punkt3D {
-    x:f64,
-    y:f64,
-    z:f64,
-}
+### [Całość wyżej opisywanego kodu](./kody_do_wykladu/w7_1.rs)
 
-#[derive(PartialEq, Debug, Clone, Default)]
-struct Punkt3D_2 (f64,f64,f64);
-
-impl Punkt3D_2
-{
-    fn new(x: f64, y:f64, z:f64) -> Self
-    {
-        Self(x, y, z)
-    }
-}
-
-impl Punkt3D
-{
-    fn new(x: f64, y:f64, z:f64) -> Punkt3D
-    {
-        Punkt3D {
-            x: x,
-            y: y,
-            z: z,
-        }
-        //Punkt3D {
-        //    x,
-        //    y,
-        //    z,
-        //}
-    }
-
-    fn srodek_uw() -> Self   //zamiast Punkt3D mozna pisać Self dużą literą
-    {
-        Self {
-            x: 0.0,
-            y: 0.0,
-            z: 0.0,
-        }
-        //Self::default()
-    }
-    fn norma(&self) -> f64
-    {
-        (self.x*self.x + self.y*self.y +self.z*self.z).sqrt()
-    }
-
-}
-
-fn main() {
-    let mut p1k = Punkt3D_2(3.5, -12.2, 7.6);
-    let mut p1 = Punkt3D {
-        x: 3.5,
-        y: -12.2,
-        z: 7.6,
-    };
-    p1.z = 3.9;
-    println!("{}", p1.x); // 3.5
-    let mut p2 = Punkt3D {
-        x: 3.5,
-        y: 2.1,
-        z: 7.6,
-    };
-    println!("{}", p1 == p2); // false
-    println!("{:?}", p1);
-    let p3 = Punkt3D::new(2.3, 1.0, -0.1);
-    let p4 = Punkt3D::srodek_uw();
-    let p5 = p3.clone();
-    println!("{:?}", p3);
-    println!("{:?}", p4);
-    println!("{}", p2.norma());
-    println!("{}", Punkt3D::norma(&p2));
-    println!("{:?}", p2);
-    let v = vec![
-        None,
-        Some(p1.clone()),
-        None,
-        Some(p2.clone()),
-        Some(p3.clone()),
-    ];
-    println!("{v:?}");
-    for p in &v{
-        println!("{:?}", p.clone().unwrap_or(Punkt3D::srodek_uw()));
-        println!("{:?}", p.clone().unwrap_or_default());
-    }
-    let p5 = Punkt3D {
-        y: -98.2,
-        ..p1
-    };
-    let mut p5k = p1k.clone();
-    p5k.1 = -98.2;
-    println!("{:?}", p5);
-    println!("{:?}", p1);
-    let p6 = Punkt3D {
-        y: -98.2,
-        ..Punkt3D::default()
-    };
-    println!("{:?}", p6);
-}
-```
 ### 1. Dlaczego `Eq` nie jest zdefiniowane dla `f64`?
 - `f64` (liczby zmiennoprzecinkowe) nie spełniają ścisłego równości (`Eq`), bo mają specjalną wartość **NaN** ("Not a Number").
 - W Rust (i matematycznie) zachodzi: \
@@ -1535,34 +1434,550 @@ $x=NaN$.
 
 
 ```rs
-use std::hash::Hash
 #[derive(Hash)]
 struct Unitarna;
 
-fn main()
-{
+fn main() {
     let u = Unitarna;
-    println!("{}", u.hash());
 }
 ```
 
 # Wykład 8
 
+📘 Typy Iloczynowe i Sumowe w Rust\
+🔹 struct – Typ Iloczynowy (Product Type)
 ```rs
 struct S {
     a: bool,
     b: u8,
 }
-
-// bool ma 2 możliwe wartości
-// u8 ma 256 możliwych wartości
-
-// S ma 512 możliwych wartości
-
-// struct tworzy typy iloczynowe (product types)
-
-// typ którego zbiór możliwych wartości jest sumą zbiorów typów składniowych
-// to jest może przyjmować wartości typu bool ALBO u8
-// ma 258 możliwych wartości
-// typ sumowy -- ale raczej unijny (union type)
 ```
+📌 Analiza:
+- `bool` ma 2 możliwe wartości: `true` lub `false`
+- `u8` ma 256 możliwych wartości: od `0` do `255`
+- Struktura `S` zawiera oba pola, więc liczba możliwych kombinacji wynosi:
+
+> **2 × 256 = 512**
+
+🧠 Wniosek:
+- `struct` w Rust tworzy **typ iloczynowy** — zbiór wartości to iloczyn kartezjański zbiorów pól składowych.
+- Każde pole musi istnieć i mieć jakąś wartość.
+- Przykład możliwej wartości:
+    ```rs
+    S { a: true, b: 42 }
+    ```
+
+🔸 `enum` – Typ Sumowy (Sum/Union Type)
+```rs
+enum E {
+    A(bool),
+    B(u8),
+}
+```
+📌 Analiza:
+- Wariant `A(bool)` ma **2** wartości
+- Wariant `B(u8)` ma **256** wartości
+- W sumie enum `E` może przyjmować:
+> **2 + 256 = 258 różnych wartości**
+
+🧠 Wniosek:
+- `enum` w Rust tworzy **typ sumowy (unijny)** — wartość może być jednym z wariantów, a nie wszystkimi naraz.
+- W danym momencie enum ma dokładnie jeden wariant.
+- Przykłady wartości:
+    ```rs
+    E::A(false)
+    E::B(128)
+    ```
+🔄 Porównanie
+Cechy	|`struct`	|`enum`
+--|--|--
+Forma	|Typ iloczynowy (product)	|Typ sumowy (union/sum)
+Ilość danych	|Wszystkie pola obecne	|Tylko jeden wariant na raz
+Liczba wartości	|Iloczyn liczności pól	|Suma liczności wariantów
+Przykład wartości	|`{ a: true, b: 10 }`	|`A(false) lub B(42)`
+
+## 🧮 Kalkulator ONP (RPN) w Rust
+[Zobacz cały kod](./kody_do_wykladu/w8_1.rs)
+📦 Struktury i aliasy
+```rs
+struct Element {
+    rodzaj: char, // '+', '-', '*', '/', 'L'
+    wartosc: f64
+}
+
+type Stos = Vec<f64>;
+```
+🔹 `Element`
+- Reprezentuje pojedynczy token w wyrażeniu ONP.
+- `rodzaj`: znak oznaczający rodzaj — literał (`'L'`) lub operator (`+`, `-`, `*`, `/`).
+- `wartosc`: używana tylko, jeśli `rodzaj == 'L'`.
+
+🔹 `Stos`
+- Alias na stos (wektor f64), używany do przechowywania tymczasowych wartości podczas obliczeń.
+
+⚙️ Funkcja wykonaj_dzialanie
+```rs
+fn wykonaj_dzialanie(rodzaj: char, a: f64, b: f64) -> f64 {
+    if rodzaj == '+' {
+        a + b
+    } else if rodzaj == '-' {
+        a - b
+    } else if rodzaj == '*' {
+        a * b
+    } else if rodzaj == '/' {
+        a / b
+    } else {
+        panic!("nieznany znak działania")
+    }
+}
+```
+- Wykonuje podstawowe działanie matematyczne na dwóch liczbach.
+- Obsługuje operatory: `+`, `-`, `*`, `/`.
+- W razie nieznanego operatora – program panikuje.
+🧠 Funkcja `oblicz_onp`
+```rs
+fn oblicz_onp(kolejka: &Vec<Element>) -> Option<f64> {
+    let mut stos = Stos::new();
+    for e in kolejka {
+        if e.rodzaj == 'L' {
+            stos.push(e.wartosc);
+        } else {
+            let b = stos.pop()?;
+            let a = stos.pop()?;
+            let wynik = wykonaj_dzialanie(e.rodzaj, a, b);
+            stos.push(wynik);
+        }
+    }
+    let wynik_koncowy = stos.pop();
+    if !stos.is_empty() {
+        return None;
+    }
+    return wynik_koncowy;
+}
+```
+🔄 Przebieg działania:
+1. Tworzy pusty stos (`Vec<f64>`).
+2. Iteruje po kolejce elementów:
+    - Jeśli `rodzaj == 'L'`: wrzuca `wartosc` na stos.
+    - W przeciwnym razie (operator): pobiera dwie liczby ze stosu (`a`, `b`), wykonuje działanie i wynik wrzuca z powrotem na stos.
+3. Po przetworzeniu:
+    - Zwraca `Some(wynik)` jeśli stos zawiera dokładnie jedną wartość (prawidłowe wyrażenie ONP).
+    - W przeciwnym razie zwraca `None` (np. za mało operandów lub nadmiar).
+
+❗ Bezpieczne operacje:
+- Użycie `pop()?` powoduje automatyczne zakończenie (`None`) gdy stos jest zbyt płytki (zbyt mało operandów).
+
+🧪 Przykłady w `main`
+```rs
+let mut k = Vec::new();
+k.push(Element{rodzaj:'L', wartosc:34.5});
+println!("{:?}", oblicz_onp(&k));
+```
+✔️ Wyrażenie: `34.5` → wynik: `Some(34.5)`
+```rs
+k.push(Element{rodzaj:'L', wartosc:1.0});
+k.push(Element{rodzaj:'L', wartosc:0.5});
+k.push(Element{rodzaj:'+', wartosc:0.0});
+k.push(Element{rodzaj:'*', wartosc:0.0});
+println!("{:?}", oblicz_onp(&k));
+```
+✔️ Wyrażenie: `34.5 1.0 0.5 + *` → wynik: `Some(51.75)`
+```rs
+let k1 = Vec::new();
+println!("{:?}", oblicz_onp(&k1));
+```
+❌ Puste wyrażenie — brak wyniku → `None`
+```rs
+let mut k2 = Vec::new();
+k2.push(Element{rodzaj:'L', wartosc:1.0});
+k2.push(Element{rodzaj:'L', wartosc:0.5});
+println!("{:?}", oblicz_onp(&k2));
+```
+❌ Zbyt dużo operandów, brak operatora → `None`
+```rs
+let mut k3 = Vec::new();
+k3.push(Element{rodzaj:'L', wartosc:1.0});
+k3.push(Element{rodzaj:'L', wartosc:0.5});
+k3.push(Element{rodzaj:'+', wartosc:0.0});
+k3.push(Element{rodzaj:'+', wartosc:0.0});
+k3.push(Element{rodzaj:'+', wartosc:0.0});
+println!("{:?}", oblicz_onp(&k3));
+```
+❌ Za dużo operatorów — zbyt mało operandów do działania → None
+
+## 🔄 Zmiany w kalkulatorze ONP — wersja z `enum Rodzaj`
+[Zobacz cały kod](./kody_do_wykladu/w8_2.rs)
+
+🆚 Co się zmieniło?
+Element kodu	|Wcześniej	|Teraz
+--|--|--
+Reprezentacja operatorów	|`char` (`'+', '-', '*', '/'`)	|`enum Rodzaj` z wariantami
+Sprawdzanie rodzaju operacji	|porównania `char` (`== '+'`)	|porównania `Rodzaj` (`== Rodzaj::Plus`)
+Literał	|`'L'` jako `char`	|osobny wariant `Rodzaj::Liczba`
+
+### 🧱 Nowe definicje
+🧾 Enum Rodzaj
+```rs
+#[derive(PartialEq, Copy, Clone)]
+enum Rodzaj {
+    Plus,
+    Minus,
+    Razy,
+    Podzielic,
+    Liczba
+}
+```
+- Zastępuje nieczytelne literały znakowe (`char`) symbolicznymi nazwami.
+- Dzięki `derive(PartialEq, Copy, Clone)` można je porównywać i kopiować.
+
+### 🔧 Struktura Element
+```rs
+struct Element {
+    rodzaj: Rodzaj,
+    wartosc: f64
+}
+```
+- Teraz `rodzaj` ma typ `Rodzaj`, a nie `char`.
+
+### 🧠 Jak to teraz działa?
+1. Literały (liczby) mają `rodzaj: Rodzaj::Liczba` — są wrzucane na stos.
+2. Operatory mają inne warianty enum (`Plus`, `Minus`, `Razy`, `Podzielic`) — zdejmują dwie liczby ze stosu, wykonują operację i wynik wrzucają z powrotem.
+3. Funkcja `oblicz_onp`:
+- Zwraca `Some(wynik)` jeśli na końcu stos zawiera tylko jedną liczbę.
+- Zwraca `None`, jeśli wyrażenie jest niepoprawne (np. za dużo operandów, brak operatorów, pusta kolejka).
+
+### ✅ Zalety nowego podejścia
+- Czytelność: `Rodzaj::Plus` jest bardziej opisowy niż `'+'`.
+- Bezpieczeństwo typów: enum ogranicza możliwe wartości `rodzaj` do zdefiniowanych opcji.
+- Mniejsza szansa na literówki: nie ma ryzyka przypadkowego wpisania złego znaku.
+- Lepsze dopasowanie do Rustowego stylu: enumy to preferowany sposób wyrażania dyskretnych wyborów.
+
+### 📊 Przykład użycia:
+```rs
+k.push(Element{rodzaj:Rodzaj::Liczba, wartosc:1.0});
+k.push(Element{rodzaj:Rodzaj::Liczba, wartosc:0.5});
+k.push(Element{rodzaj:Rodzaj::Plus, wartosc:0.0});
+k.push(Element{rodzaj:Rodzaj::Razy, wartosc:0.0});
+```
+
+## 🔄 Zastąpienie `struct Element` przez `enum Element`
+[Zobacz cały kod](./kody_do_wykladu/w8_3.rs)
+
+### ✅ Co się zmieniło?
+Poprzednia wersja	|Obecna wersja
+--|--
+`Rodzaj` i `Element` to osobne struktury	|Wszystko zintegrowane w jednym `enum Element`
+`Element` miał dwa pola: `rodzaj` i `wartosc`	|`Element` to enum z wariantem Liczba(f64)
+Dane liczby i operatora były oddzielne	|Teraz `Liczba` zawiera wartość wewnątrz enum
+Sprawdzenie `e.rodzaj == Rodzaj::Liczba`	|Sprawdzenie `if let Element::Liczba(w) = e`
+`wartosc: 0.0` dla operatorów (dummy value)	|Usunięte — operator nie potrzebuje liczby
+
+### 🧱 Nowa definicja `Element`
+```rs
+#[derive(PartialEq, Copy, Clone)]
+enum Element {
+    Plus,
+    Minus,
+    Razy,
+    Podzielic,
+    Liczba(f64)
+}
+```
+- Wariant `Liczba(f64)` przechowuje wartość liczby wewnątrz enumu.
+- Pozostałe warianty reprezentują działania i nie potrzebują osobnego pola `wartosc: f64`.
+### ✨ Jak to działa teraz?
+Główna pętla w `oblicz_onp`
+```rs
+if let Element::Liczba(wartosc) = *e {
+    stos.push(wartosc);
+} else {
+    let b = stos.pop()?; let a = stos.pop()?;
+    let wynik = wykonaj_dzialanie(*e, a, b);
+    stos.push(wynik);
+}
+```
+- Sprawdzamy, czy `Element` jest liczbą — jeśli tak, wyciągamy wartosc i wrzucamy na stos.
+- W przeciwnym razie traktujemy go jako operator i wykonujemy działanie.
+- Warto zwrócić uwagę na ten fragment:
+    ```rs
+    if let Element::Liczba(wartosc) = *e
+    ```
+    - to tzw. dopasowanie z destrukturyzacją (ang. pattern matching) w skróconej formie — używamy go, by sprawdzić, czy `e` ma konkretny wariant enumu i jednocześnie wydobyć dane (w tym przypadku wartość `f64`).
+    - Krok po kroku:
+        1. `e` to referencja (`&Element`) — dlatego używamy `*e`, żeby dostać się do samej wartości `Element`.
+        2. `if let Element::Liczba(wartosc) = *e`:
+            - sprawdza, czy `*e` to wariant `Liczba`.
+            - jeśli tak, wyciąga wartość i przypisuje ją do zmiennej `wartosc`.
+            - jeśli nie, kod w bloku `if` jest pomijany — przechodzimy do `else`.
+
+## 🧠 Refaktoryzacja: Zmiana z `if else if` na `match` w `wykonaj_dzialanie`
+[Zobacz cały kod](./kody_do_wykladu/w8_4.rs)
+
+[Zobacz cały kod (z dodaniem potęgi)](./kody_do_wykladu/w8_5.rs)
+
+W tej wersji kodu nastąpiła refaktoryzacja funkcji wykonaj_dzialanie, która teraz używa match zamiast serii instrukcji if else if.
+
+Co się zmieniło?
+- Było:
+```rs
+if rodzaj == Element::Plus {
+    a + b
+} else if rodzaj == Element::Minus {
+    ...
+}
+```
+- Jest:
+```rs
+match rodzaj {
+    Element::Plus => a + b,
+    Element::Minus => a - b,
+    ...
+    Element::Liczba(_) => panic!("niespodziewana Liczba (z typu Element)")
+}
+```
+Zalety `match`:
+- bardziej przejrzysta i idiomatyczna w Rust,
+- wymusza pełną obsługę wszystkich wariantów `enum`,
+- łatwiej ją rozszerzać i utrzymywać,
+- mniej podatna na pomyłki (np. przypadkowe pominięcie wariantu).
+- zabezpiecza program przed nieprawidłowym użyciem wariantu `Element::Liczba` w miejscu, gdzie oczekiwany jest operator (np. `Plus`, `Razy`, `Potega`).
+
+## 🧠 Użycie use `crate::Element::{...}` do skrócenia nazw enumów w Rust
+[Zobacz cały kod](./kody_do_wykladu/w8_6.rs)
+
+📌 Cel zmiany\
+W kodzie zamiast pisać pełne ścieżki typu `Element::Plus`, `Element::Liczba(...)` itd., zastosowano:
+```rs
+use crate::Element::{Plus, Minus, Razy, Podzielic, Potega, Liczba};
+```
+co pozwala używać wariantów enuma `Element` bez prefiksu `Element::`, czyli:
+```rs
+k.push(Liczba(2.0));
+k.push(Potega);
+```
+zamiast:
+```rs
+k.push(Element::Liczba(2.0));
+k.push(Element::Potega);
+```
+✅ Zalety takiego podejścia
+- Czytelność – kod jest krótszy i mniej zaszumiony.
+- Mniej powtórzeń – unika się wielokrotnego pisania `Element::`.
+- Bezpieczna kontrola – wybierając konkretne warianty (a nie całe `Element::*`), łatwiej śledzić, co dokładnie jest używane w tym pliku.
+
+⚠️ Dlaczego `use crate::Element::*` jest gorsze?\
+Użycie:
+```rs
+use crate::Element::*;
+```
+importuje wszystkie warianty `Element` do bieżącego zakresu – co:
+- może prowadzić do konfliktów nazw,
+- zaciera granice tego, skąd pochodzą symbole,
+- utrudnia czytanie i analizowanie kodu, zwłaszcza w większych projektach.
+
+🧭 Dobre praktyki
+- ✅ Używaj jawnego importu konkretnych wariantów (`{Plus, Minus, ...}`) – jak w tym przykładzie.
+- ❌ Unikaj `use enum::*`, zwłaszcza w większych projektach lub plikach z wieloma zależnościami.
+
+
+```rs
+fn komunikat(a: &Option<char>) {
+    if !a.is_none() {
+        println!("znak: {}", a.unwrap());
+    } else {
+        println!("PUSTO");
+    }
+}
+
+
+fn main() {
+    let x: Option<char> = None;
+    let y: Option<char> = Some('y');
+    
+    komunikat(&x);
+    komunikat(&y);
+}
+```
+### 🧠 Cel programu
+Program definiuje funkcję `komunikat`, która przyjmuje referencję do zmiennej typu `Option<char>` i wypisuje:
+- zawarty znak, jeśli jest dostępny (`Some(char)`),
+- komunikat `"PUSTO"`, jeśli wartość to `None`.
+
+### 🔧 Funkcja komunikat
+- `a: &Option<char>` – funkcja przyjmuje referencję do `Option<char>`, czyli nie kopiuje ani nie przenosi zawartości.
+- `a.is_none()` – metoda sprawdza, czy `a` jest równe `None`.
+- `!a.is_none()` – czyli: jeśli `a` nie jest puste, to...
+- `a.unwrap()` – rozpakowuje wartość z `Some(char)`. Uwaga: wywołanie `unwrap()` na `None` spowodowałoby panic!, ale tu jest ono bezpieczne, bo wcześniej warunek `!a.is_none()` to sprawdził.
+
+### 🧠 Co się dzieje w `match a { ... }`?
+```rs
+fn komunikat(a: &Option<char>) {
+    match a {
+        Some(znak)  => { println!("znak: {}", znak); }
+        None        => { println!("PUSTO"); }
+    }
+}
+```
+🔹 `match` to konstrukcja dopasowania wzorców:
+- Sprawdza możliwe warianty wartości zmiennej `a`, która jest typu `&Option<char>`.
+
+🔸 `Some(znak)` – wzorzec dopasowuje się, gdy w `a` jest `Some(c)`:
+- Wyciąga zawarty znak do zmiennej znak.
+- Następnie wypisuje go: `znak: <wartość>`.
+
+🔸 `None` – dopasowuje się, gdy `a` jest `None`:
+- Wypisuje `"PUSTO"`.
+
+✅ Zalety użycia `match` zamiast `unwrap` + `is_none`:
+Cecha	|`match`	|`unwrap` + `is_none`
+--|--|--
+Bezpieczne	|✅ nie grozi `panic!`	|⚠️ `unwrap()` może się wywalić
+Idiomatyczne dla Rusta	|✅ tak	|❌ mniej zalecane
+Przejrzystość semantyczna	|✅ dopasowanie do wariantów enum	|❌ bardziej proceduralne
+
+### 🧠 Co robi `if let Some(znak) = a`?
+```rs
+fn komunikat(a: &Option<char>) {
+    if let Some(znak) = a {
+        println!("znak: {}", znak);
+    } else {
+        println!("PUSTO");
+    }
+}
+```
+🔹 `if let Some(znak) = a`
+- Sprawdza, czy zmienna `a` (referencja do `Option<char>`) zawiera wartość (`Some(znak)`).
+- Jeśli tak, wypisuje tę wartość.
+- W przeciwnym razie (`else`), wypisuje `"PUSTO"`.
+
+✅ Zalety `if let`
+- Mniej kodu, gdy interesuje Cię tylko jeden przypadek (`Some`).
+- Bardzo czytelne i naturalne.
+- Unikasz użycia `unwrap()`, czyli nie ryzykujesz błędu wykonania (`panic!`).
+
+📌 Kiedy używać `if let`, a kiedy `match`?
+Potrzebujesz obsłużyć…	|Użyj
+--|--
+Tylko jeden przypadek	|`if let`
+Więcej niż jeden wariant	|`match`
+Wszystkie możliwe warianty	|`match`
+
+Ta sama zasada działania co wyżej ale z użyciem `Result<...>`, zamiast `Option<...>` 
+```rs
+fn komunikat(a: &Result<char, String>) {
+    match a {
+        Ok(znak)    => { println!("znak: {}", znak); }
+        Err(blad)   => { println!("błąd: {}", blad); }
+    }
+}
+
+
+fn main() {
+    let x: Result<char, String> = Err("brak znaku".to_string());
+    let y: Result<char, String> = Ok('y');
+    
+    komunikat(&x);
+    komunikat(&y);
+}
+```
+W tym kodzie mamy do czynienia z bardziej złożoną wersją typu Option, czyli Option<Option<T>>. To oznacza, że mamy opcję, która może zawierać inną opcję.
+```rs
+fn komunikat(a: &Option<Option<char>>) {
+    match a {
+        Some(Some(znak))  => { println!("znak: {:?}", znak); }
+        Some(None)        => { println!("PRAWIE PUSTO"); }
+        None              => { println!("PUSTO"); }
+    }
+}
+
+
+fn main() {
+    let x: Option<Option<char>> = None;
+    let y: Option<Option<char>> = Some(Some('y'));
+    let z: Option<Option<char>> = Some(None);
+    
+    komunikat(&x);
+    komunikat(&y);
+    komunikat(&z);
+}
+```
+🧠 Co się dzieje w kodzie?
+1. Funkcja komunikat
+    - Ta funkcja bierze referencję do `Option<Option<char>>` i sprawdza, jaki ma stan.
+    - `Some(Some(znak))`: Jeśli opcja zawiera inną opcję, która zawiera wartość (np. `Some('y')`), wypisuje tę wartość.
+    - `Some(None)`: Jeśli opcja zawiera inną opcję, ale ta opcja jest pusta (np. `Some(None)`), wypisuje `"PRAWIE PUSTO"`.
+    - `None`: Jeśli zewnętrzna opcja jest pusta (np. None), wypisuje `"PUSTO"`.
+2. Przypadki w `main`
+    - `x = None`: Zewnętrzna opcja jest pusta, więc wypisuje `"PUSTO"`.
+    - `y = Some(Some('y'))`: Zewnętrzna opcja zawiera wewnętrzną opcję, która zawiera znak `'y'`, więc wypisuje `"znak: 'y'"`.
+    - `z = Some(None)`: Zewnętrzna opcja zawiera wewnętrzną opcję, ale ta wewnętrzna jest pusta, więc wypisuje `"PRAWIE PUSTO"`.
+
+### 📌 Dlaczego Option<Option<T>>?
+Można używać `Option<Option<T>>` w sytuacjach, gdzie chcesz reprezentować:
+- **Brak wartości** (`None`),
+- **Wartość obecna** (zawierająca inną opcję: `Some(Some(T))`),
+- **Pustą wartość** (np. `Some(None)`), gdy masz przypadek, w którym coś mogło zostać wstępnie ustalone, ale ostatecznie jest puste.
+
+Tego typu konstrukcja jest użyteczna w bardziej skomplikowanych sytuacjach, ale trzeba uważać, by nie wprowadzać zbędnej złożoności.
+
+```rs
+fn komunikat(a: &Option<Option<char>>) {
+    match a {
+        Some(Some(znak))  => { println!("znak: {:?}", znak); }
+        Some(_)           => { println!("PRAWIE PUSTO"); }
+        _                 => { println!("PUSTO"); }
+    }
+}
+```
+to uproszczona wersja poprzedniego match, która wykorzystuje symbol podkreślenia (_) jako catch-all, czyli dopasowanie ogólne, gdy inne warianty nie pasują.
+
+### 🔍 Co się tu dzieje:
+- `Some(Some(znak))` — jeśli mamy `Some(Some('x'))`, to wypisujemy wartość znaku.
+- `Some(_)` — jeśli mamy `Some(None)`, czyli zewnętrzne `Some`, ale wewnętrzna opcja jest `None`, to wypisujemy `"PRAWIE PUSTO"`.
+- `_` — wszystko inne, czyli None, wypisuje `"PUSTO"`.
+
+### ✅ Efekt działania jest identyczny jak wcześniej, ale kod jest:
+- krótszy,
+- bardziej zwięzły,
+- mniej precyzyjny (bo `Some(None)` i inne potencjalne nietypowe `Some(_)` traktuje tak samo).
+
+### 🔑 Uwagi:
+- Ten styl sprawdza się, jeśli nie chcesz rozróżniać dokładnie każdego przypadku Some, tylko zależy Ci na obsłużeniu najważniejszego (`Some(Some(...))`) i reszty ogólnikowo.
+- Jest bardziej czytelny w prostych przypadkach.
+
+```rs
+fn komunikat(a: &Result<Result<char, String>, String>) {
+    match a {
+        Ok(Ok(znak))  => { println!("znak: {:?}", znak); }
+        Ok(_)         => { println!("PRAWIE PUSTO"); }
+        _             => { println!("PUSTO"); }
+    }
+}
+
+
+fn main() {
+    let x = Err("?".to_string());
+    let y = Ok(Ok('y'));
+    let z = Ok(Err("???".to_string()));
+    
+    komunikat(&x);
+    komunikat(&y);
+    komunikat(&z);
+}
+```
+W tym przykładzie funkcja `komunikat` operuje na zagnieżdżonym typie: `Result<Result<char, String>, String>`. To oznacza, że mamy wynik w wyniku – czyli coś, co może zakończyć się błędem na dwóch poziomach.
+### 🔍 Struktura danych
+- Zewnętrzne `Result<_, String>`
+    - `Ok(...)` — sukces, więc sprawdzamy wartość wewnętrzną
+    - `Err(...)` — błąd zewnętrzny
+- Wewnętrzne `Result<char, String>`
+    - `Ok('x')` — sukces, mamy znak
+    - `Err(...)` — błąd wewnętrzny
+
+🔎 Działanie funkcji
+- `Ok(Ok(znak))` — sukces zewnętrzny i wewnętrzny → wypisz znak
+- `Ok(_)` — sukces zewnętrzny, ale wewnętrzny to `Err(...)` → "PRAWIE PUSTO"
+- `_` — wszystko inne (czyli `Err(...)` na zewnątrz) → "PUSTO"
+
+### 🧠 Co to pokazuje?
+To ćwiczenie dobrze ilustruje jak działa **zagnieżdżone dopasowanie** `match` i jak można czytelnie oddzielić różne poziomy sukcesu/błędu. Przykład jest bardzo typowy dla kodu np. z funkcjami, które mogą zwracać błąd przy otwieraniu pliku (`Result`) i dodatkowo mogą zwracać błędne dane (`Result` wewnątrz `Ok`).
