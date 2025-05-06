@@ -7,6 +7,7 @@ Orginalny plik zawiera kolory, których nie widać na podglądzie na Githubie, w
 - [Wykład 5](#wykład-5)
 - [Wykład 6](#wykład-6)
 - [Wykład 7](#Wykład-7)
+- [Wykład 8](#Wykład-8)
 
 # Wykład 1
 
@@ -1133,18 +1134,274 @@ Metoda `.any()` sprawdza, czy przynajmniej jeden element w danym iteratorze spe�
 Metoda `.for_each()` służy do iterowania po wszystkich elementach iteratora i wykonania na nich podanej operacji.
 
 # Wykład 7
-Plain Old Data
 
+Plain Old Data (POD) to pojęcie wywodzące się z języka C++ i oznacza strukturę danych, która ma bardzo prostą, "niezaskakującą" reprezentację w pamięci — czyli taką, która:
+- nie zawiera konstruktorów ani destruktorów,
+- nie zawiera wirtualnych funkcji ani dziedziczenia,
+- składa się wyłącznie z prostych typów (np. `int`, `float`, `char`, innych POD),
+- może być bezpiecznie kopiowana przez `memcpy` lub zrzucana do pliku jako binarka i później odczytywana.
+
+#### POD a Rust
+Rust nie ma dokładnie takiej klasyfikacji jak C++ (POD, trivial, standard-layout itd.), ale w praktyce wiele typów w Rust można uznać za "POD-owate". Tzn. też mają przewidywalny układ w pamięci i nie mają specjalnych zachowań przy kopiowaniu czy destrukcji.
+
+#### `Punkt3D` – struktura nazwanych pól
 ```rs
-#[derive(PartialEq, Debug, Clone, Default)] // Eq ?
+#[derive(PartialEq, Debug, Clone, Default)] 
 struct Punkt3D {
     x:f64,
     y:f64,
     z:f64,
 }
-struct Punkt3DK (f64,f64,f64)l
+```
+Co to oznacza?
+- To klasyczna struktura z nazwanymi polami.
+- Każde pole ma nazwę (`x`, `y`, `z`) i typ (`f64` – liczby zmiennoprzecinkowe).
+- Jest to bardzo czytelna forma, dobra do pracy, gdy chcesz wiedzieć, co oznacza każde pole.
 
-impl Punkt3DK
+`#[derive(...)]` – automatyczne implementacje\
+Rust używa tej składni, by automatycznie zaimplementować pewne cechy (traits):
+- `PartialEq` – pozwala porównywać dwie struktury za pomocą `==` i `!=`.
+- `Debug` – umożliwia debug-printowanie struktury, np. z `println!("{:?}", punkt)`.
+- `Clone` – pozwala na klonowanie, np. `let b = a.clone()`;.
+- `Default` – pozwala stworzyć "domyślną" wartość, np. `Punkt3D::default()` zwróci `Punkt3D { x: 0.0, y: 0.0, z: 0.0 }`.
+
+
+#### `Punkt3D_2` – struktura krotek (tuple struct)
+```rs
+#[derive(PartialEq, Debug, Clone, Default)]
+struct Punkt3D_2 (f64,f64,f64);
+```
+Co to oznacza?
+- To tzw. **tuple struct** – struktura, która wygląda jak krotka, ale ma własną nazwę typu.
+- Pola nie mają nazw – są dostępne przez indeksy: `.0`, `.1`, `.2`.
+- Funkcjonalnie jest prawie taka sama jak `Punkt3D`, ale mniej czytelna w kontekście semantycznym.
+
+Kiedy używać której?
+
+Cechy	|`Punkt3D` (nazwane pola)	|`Punkt3D_2` (tuple struct)
+--|--|--
+Czytelność	|✅ lepsza (`x`, `y`, `z`)	                |❌ mniej czytelna (`.0`, `.1`, `.2`)
+Semantyka	|✅ jasna (wiadomo, co robi każde pole)	    |🤷 raczej do tymczasowych danych
+Wygoda	    |✅ lepsza przy dokumentowaniu, testowaniu	|✅ krótsza w pisaniu
+
+
+```rs
+impl Punkt3D_2
+{
+    fn new(x: f64, y:f64, z:f64) -> Self
+    {
+        Self(x, y, z)
+    }
+}
+```
+🔍 Co oznacza `impl Punkt3D_2 { ... }`?\
+To blok implementacji metod dla typu `Punkt3D_2`. W jego wnętrzu definiujesz funkcje (tzw. metody), które są związane z tą strukturą.
+
+🛠 Co robi `fn new(...) -> Self`?
+- `Self` to alias na aktualny typ (`Punkt3D_2`).
+- Funkcja `new` przyjmuje trzy argumenty typu f64 i tworzy nową instancję struktury.
+- `Self(x, y, z)` to skrócony zapis dla `Punkt3D_2(x, y, z)`.
+
+```rs
+impl Punkt3D
+{
+    fn new(x: f64, y:f64, z:f64) -> Punkt3D
+    {
+        Punkt3D {
+            x: x,
+            y: y,
+            z: z,
+        }
+        //Punkt3D {
+        //    x,
+        //    y,
+        //    z,
+        //}
+    }
+
+    fn srodek_uw() -> Self   //zamiast Punkt3D mozna pisać Self dużą literą
+    {
+        Self {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        }
+        //Self::default()
+    }
+    fn norma(&self) -> f64
+    {
+        (self.x*self.x + self.y*self.y +self.z*self.z).sqrt()
+    }
+
+}
+```
+`fn new(x: f64, y: f64, z: f64) -> Punkt3D`
+- **Cel: Konstruktor** – tworzy nową instancję struktury `Punkt3D` z podanymi współrzędnymi.
+- `x: x` przypisuje wartość parametru `x` do pola `x` w strukturze – Rust umożliwia skrót: `x` zamiast `x: x`, jeśli nazwy się zgadzają.
+- Zwraca: `Punkt3D { x, y, z }`.
+
+`fn srodek_uw() -> Self`
+- **Cel:** Zwraca punkt w centrum układu współrzędnych (0.0, 0.0, 0.0).
+- `Self` to alias na typ `Punkt3D`, używany w metodach typu.
+- **Alternatywa:** `Self::default()` robi to samo, ponieważ mamy `#[derive(Default)]` i domyślne wartości pól to zera.
+
+`fn norma(&self) -> f64`
+- **Cel:** Oblicza długość wektora od punktu (0,0,0) do `self`, czyli jego normę euklidesową.
+- `&self` oznacza, że metoda działa na referencji do konkretnego obiektu.
+- Obliczenie: $ \sqrt{x^2+y^2+z^2} $
+- Zwraca wartość typu `f64`.
+
+#### 1. Tworzenie struktur:
+```rs
+let mut p1k = Punkt3D_2(3.5, -12.2, 7.6);
+```
+- Tworzy tuple struct (`Punkt3D_2`) z trzema wartościami `f64`.
+- `mut` pozwala później modyfikować `p1k` 
+```rs
+let mut p1 = Punkt3D {
+    x: 3.5,
+    y: -12.2,
+    z: 7.6,
+};
+```
+- Tworzy klasyczną strukturę Punkt3D z nazwanymi polami.
+- Też oznaczony jako mut.
+#### 2. Modyfikacja pola `z`:
+```rs
+p1.z = 3.9;
+```
+- Zmienia wartość pola `z` w `p1` z `7.6` na `3.9`.
+#### 3. Tworzenie drugiego punktu:
+```rs
+let mut p2 = Punkt3D {
+    x: 3.5,
+    y: 2.1,
+    z: 7.6,
+};
+```
+- Nowa struktura `p2`, różni się od `p1` polem `y`
+#### 4. Porównanie struktur:
+```rs
+println!("{}", p1 == p2); 
+// output: false
+```
+- Dzięki `#[derive(PartialEq)]` można porównywać `==`.
+- `false`, bo `p1.y = -12.2`, a `p2.y = 2.1`
+
+#### 5. Debug print:
+```rs
+println!("{:?}", p1);
+// output: Punkt3D { x: 3.5, y: -12.2, z: 3.9 }
+```
+- Dzięki `#[derive(Debug)]` wypisuje strukturę w formacie debug
+#### 6. Tworzenie punktów przez metody:
+```rs
+let p3 = Punkt3D::new(2.3, 1.0, -0.1);
+let p4 = Punkt3D::srodek_uw();
+```
+- `p3` tworzony przez `new()`, `p4` to punkt zerowy
+
+#### 7. Klonowanie:
+```rs
+let p5 = p3.clone();
+```
+- Tworzy kopię `p3`. Dzięki `#[derive(Clone)]`.
+#### 8. Wypisywanie punktów:
+```rs
+println!("{:?}", p3);
+println!("{:?}", p4);
+// output: Punkt3D { x: 2.3, y: 1.0, z: -0.1 }
+//         Punkt3D { x: 0.0, y: 0.0, z: 0.0 }
+```
+#### 9. Norma (długość wektora):
+```rs
+println!("{}", p2.norma());
+println!("{}", Punkt3D::norma(&p2));
+//output: 8.62670273047588
+//        8.62670273047588
+```
+- Dwa sposoby wywołania tej samej metody.
+#### 10. Tworzenie wektora `v` z wartościami `Option<Punkt3D>`
+```rs
+let v = vec![
+    None,
+    Some(p1.clone()),
+    None,
+    Some(p2.clone()),
+    Some(p3.clone()),
+];
+```
+- Tworzy wektor `v` z wartościami `Option<Punkt3D>`.
+- `Some(...)` zawiera sklonowane punkty, a `None` oznacza brak wartości.
+- `vec![]` tworzy dynamiczny wektor.
+#### 11. Debug-print całego wektora
+```rs
+println!("{v:?}");
+// output: [None, Some(Punkt3D { x: 3.5, y: -12.2, z: 3.9 }), None, Some(Punkt3D { x: 3.5, y: 2.1, z: 7.6 }), Some(Punkt3D { x: 2.3, y: 1.0, z: -0.1 })]
+```
+#### 12. Iteracja po referencjach do elementów `v`
+```rs
+for p in &v {
+    println!("{:?}", p.clone().unwrap_or(Punkt3D::srodek_uw()));
+    println!("{:?}", p.clone().unwrap_or_default());
+}
+//output:   Punkt3D { x: 0.0, y: 0.0, z: 0.0 }
+//          Punkt3D { x: 0.0, y: 0.0, z: 0.0 }
+//          Punkt3D { x: 3.5, y: -12.2, z: 3.9 }
+//          Punkt3D { x: 3.5, y: -12.2, z: 3.9 }
+//          Punkt3D { x: 0.0, y: 0.0, z: 0.0 }
+//          Punkt3D { x: 0.0, y: 0.0, z: 0.0 }
+//          Punkt3D { x: 3.5, y: 2.1, z: 7.6 }
+//          Punkt3D { x: 3.5, y: 2.1, z: 7.6 }
+//          Punkt3D { x: 2.3, y: 1.0, z: -0.1 }
+//          Punkt3D { x: 2.3, y: 1.0, z: -0.1 }
+```
+- Przechodzi przez każdy element `v`, używając referencji `&v`.
+- `p.clone()` tworzy kopię `Option<Punkt3D>`, by można było ją odpakować przy pomocy `unwrap_or(...)`.
+- `unwrap_or_default()` zwraca zawartość `Some(...)` lub wartość domyślną, jeśli `None`.
+- W obu przypadkach, gdy `p` to `None`, zwracany jest punkt `(0.0, 0.0, 0.0)`.
+#### 13. Tworzenie nowego punktu `p5` na podstawie istniejącego `p1`
+```rs
+let p5 = Punkt3D {
+    y: -98.2,
+    ..p1
+};
+```
+- Tworzymy nowy obiekt `Punkt3D`.
+- Pole `y` ustawiamy ręcznie na `-98.2`.
+- Pozostałe pola (`x` i `z`) automatycznie kopiujemy z istniejącego obiektu `p1`.
+- Operator `..p1` oznacza: **"wypełnij resztę pól wartościami z p1"**.
+#### 14. Modyfikacja tuple struct `p5k`
+```rs
+let mut p5k = p1k.clone();
+p5k.1 = -98.2;
+```
+- Tworzy kopię `p1k` i modyfikuje drugie pole (indeks 1).
+- Pola w tuple struct są dostępne jako `.0`, `.1`, `.2`.
+#### 15. Tworzenie `p6` z `default()` + zmiana `y`
+```rs
+let p6 = Punkt3D {
+    y: -98.2,
+    ..Punkt3D::default()
+};
+```
+- Tworzy punkt, w którym tylko `y = -98.2`, a `x` i `z` są domyślne (`0.0`).
+- Przykład użycia `..default()` z nadpisaniem pojedynczego pola.
+
+
+### Całość wyżej opisywanego kodu:
+```rs
+#[derive(PartialEq, Debug, Clone, Default)]
+struct Punkt3D {
+    x:f64,
+    y:f64,
+    z:f64,
+}
+
+#[derive(PartialEq, Debug, Clone, Default)]
+struct Punkt3D_2 (f64,f64,f64);
+
+impl Punkt3D_2
 {
     fn new(x: f64, y:f64, z:f64) -> Self
     {
@@ -1167,8 +1424,8 @@ impl Punkt3D
         //    z,
         //}
     }
- 
-    fn srodek_u() -> Self   //zamiast Punkt3D mozna pisać Self dużą literą
+
+    fn srodek_uw() -> Self   //zamiast Punkt3D mozna pisać Self dużą literą
     {
         Self {
             x: 0.0,
@@ -1179,24 +1436,24 @@ impl Punkt3D
     }
     fn norma(&self) -> f64
     {
-        (slef.x*self.x + slef.y*self.y +slef.z*self.z).sqrt()
+        (self.x*self.x + self.y*self.y +self.z*self.z).sqrt()
     }
 
 }
 
 fn main() {
-    let mut p1k: Punkt3D(3.5, -12.2, 7.6,);
-    let mut p1: Punkt3D {
-    x: 3.5,
-    y: -12.2,
-    z: 7.6,
+    let mut p1k = Punkt3D_2(3.5, -12.2, 7.6);
+    let mut p1 = Punkt3D {
+        x: 3.5,
+        y: -12.2,
+        z: 7.6,
     };
     p1.z = 3.9;
     println!("{}", p1.x); // 3.5
-    let mut p2: Punkt3D {
-    x: 3.5,
-    y: 2.1,
-    z: 7.6,
+    let mut p2 = Punkt3D {
+        x: 3.5,
+        y: 2.1,
+        z: 7.6,
     };
     println!("{}", p1 == p2); // false
     println!("{:?}", p1);
@@ -1213,41 +1470,69 @@ fn main() {
         Some(p1.clone()),
         None,
         Some(p2.clone()),
-        Some(p3,clone()),
+        Some(p3.clone()),
     ];
     println!("{v:?}");
-    for p in &w{
+    for p in &v{
         println!("{:?}", p.clone().unwrap_or(Punkt3D::srodek_uw()));
         println!("{:?}", p.clone().unwrap_or_default());
     }
     let p5 = Punkt3D {
-        y= -98.2,
+        y: -98.2,
         ..p1
-    }
+    };
     let mut p5k = p1k.clone();
     p5k.1 = -98.2;
     println!("{:?}", p5);
     println!("{:?}", p1);
     let p6 = Punkt3D {
-        y= -98.2,
+        y: -98.2,
         ..Punkt3D::default()
-    }
+    };
     println!("{:?}", p6);
 }
 ```
-Eq nie jest zdefiniowane dla f64
-dla każdego x (nan==x) == false
+### 1. Dlaczego `Eq` nie jest zdefiniowane dla `f64`?
+- `f64` (liczby zmiennoprzecinkowe) nie spełniają ścisłego równości (`Eq`), bo mają specjalną wartość **NaN** ("Not a Number").
+- W Rust (i matematycznie) zachodzi: \
+$NaN==𝑥$ jest zawsze false
+nawet gdy 
+$x=NaN$.
+- Dlatego `f64` implementuje tylko `PartialEq`, a nie `Eq`.
 
-cechy:
-- Debug
-- PartialEq
-- Clone
-- Default
-- Hash
-- Eq <- PartialEq
-- Copy <- Clone
-- PartialOrd <- PartialEq
-- Ord <- PartialOrd, Eq
+### 2. Przykładowe cechy (`traits`):
+- **`Debug`**
+    - Pozwala formatować strukturę jako tekst przy pomocy `{:?}`.\
+    (np. w `println!("{:?}", zmienna)`).
+
+- **`PartialEq`**
+    - Umożliwia porównywanie (`==`, `!=`), ale nie gwarantuje, że każda wartość jest równa samej sobie (bo np. **NaN != NaN**).
+
+- **`Clone`**
+    - Pozwala tworzyć kopię zmiennej ręcznie (`clone()`).
+
+- **`Default`**
+    - Pozwala stworzyć **domyślną wartość** (np. wszystkie liczby = 0.0).
+
+- **`Hash`**
+    - Pozwala na tworzenie hasha wartości (np. do użycia w `HashMap`).
+
+- **`Eq`** (dziedziczy po `PartialEq`)
+    - Gwarantuje, że dla każdej wartości x, będzie:\
+    $x==x (zawsze true)$\
+    `f64` tego nie spełnia (przez NaN).
+
+- **`Copy`** (dziedziczy po `Clone`)
+    - Pozwala automatycznie kopiować zmienną bez wywoływania `clone()`, przy zwykłym przypisaniu.\
+    (`let b = a;` – `a` nadal istnieje).
+
+- **`PartialOrd`** (dziedziczy po `PartialEq`)
+    - Pozwala na częściowe porównania (`<`, `>`, `<=`, `>=`), ale np. NaN nie da się sensownie porównać.
+
+- **`Ord`** (dziedziczy po `PartialOrd` i `Eq`)
+    - Umożliwia **pełne porządkowanie** wszystkich wartości — każda wartość musi być "większa", "mniejsza" lub "równa" innej.\
+    (np. potrzebne w sortowaniu).
+
 
 ```rs
 use std::hash::Hash
@@ -1259,4 +1544,25 @@ fn main()
     let u = Unitarna;
     println!("{}", u.hash());
 }
+```
+
+# Wykład 8
+
+```rs
+struct S {
+    a: bool,
+    b: u8,
+}
+
+// bool ma 2 możliwe wartości
+// u8 ma 256 możliwych wartości
+
+// S ma 512 możliwych wartości
+
+// struct tworzy typy iloczynowe (product types)
+
+// typ którego zbiór możliwych wartości jest sumą zbiorów typów składniowych
+// to jest może przyjmować wartości typu bool ALBO u8
+// ma 258 możliwych wartości
+// typ sumowy -- ale raczej unijny (union type)
 ```
