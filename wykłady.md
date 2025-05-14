@@ -1,13 +1,14 @@
 Orginalny plik zawiera kolory, których nie widać na podglądzie na Githubie, więc warto go pobrać i otworzyć w czymś lepszym.
 # Spis treści:
-- [Wykład 1](#Wykład-1)
-- [Wykład 2](#Wykład-2)
-- [Wykład 3](#Wykład-3)
-- [Wykład 4](#Wykład-4)
+- [Wykład 1](#wykład-1)
+- [Wykład 2](#wykład-2)
+- [Wykład 3](#wykład-3)
+- [Wykład 4](#wykład-4)
 - [Wykład 5](#wykład-5)
 - [Wykład 6](#wykład-6)
-- [Wykład 7](#Wykład-7)
-- [Wykład 8](#Wykład-8)
+- [Wykład 7](#wykład-7)
+- [Wykład 8](#wykład-8)
+- [Wykład 9](#wykład-9)
 
 # Wykład 1
 
@@ -1498,6 +1499,7 @@ Przykład wartości	|`{ a: true, b: 10 }`	|`A(false) lub B(42)`
 
 ## 🧮 Kalkulator ONP (RPN) w Rust
 [Zobacz cały kod](./kody_do_wykladu/w8_1.rs)
+
 📦 Struktury i aliasy
 ```rs
 struct Element {
@@ -1981,3 +1983,250 @@ W tym przykładzie funkcja `komunikat` operuje na zagnieżdżonym typie: `Result
 
 ### 🧠 Co to pokazuje?
 To ćwiczenie dobrze ilustruje jak działa **zagnieżdżone dopasowanie** `match` i jak można czytelnie oddzielić różne poziomy sukcesu/błędu. Przykład jest bardzo typowy dla kodu np. z funkcjami, które mogą zwracać błąd przy otwieraniu pliku (`Result`) i dodatkowo mogą zwracać błędne dane (`Result` wewnątrz `Ok`).
+
+# Wykład 9
+
+[Kod - input, całość kodu](./kody_do_wykladu/w9_1.rs)
+
+#### Szczegółowy opis:
+#### `main` (funkcja główna)
+```rs
+let imie = wczytaj_napis("Imię? ");
+let wiek = wczytaj_usize("Ile masz lat? ");
+let ul = wczytaj_f64("Ulubiona liczba? ");
+println!("Cześć, {imie}, lat {wiek}!");
+println!("Twoja ulubiona liczba: {ul}...");
+```
+- `wczytaj_napis` – prosi użytkownika o wpisanie imienia.
+- `wczytaj_usize` – prosi użytkownika o wiek i konwertuje go do liczby całkowitej `usize`.
+- `wczytaj_f64` – prosi użytkownika o ulubioną liczbę i konwertuje ją do liczby zmiennoprzecinkowej `f64`.
+#### Funkcja `wczytaj_napis(prompt: &str) -> String`
+```rs
+let mut odp = String::new();
+print!("{prompt}");
+std::io::stdout().flush().expect("???: problem z flush");
+std::io::stdin().read_line(&mut odp).expect("???: problem z read_line");
+//return odp.trim_end_matches('\n').to_string();
+return odp.trim_end().to_string();
+```
+- Wyświetla prompt (np. "Imię?").
+- `flush()` jest konieczny, żeby `print!` natychmiast pokazał tekst.
+- `read_line` wczytuje linię z wejścia i zapisuje ją do `odp`.
+- `trim_end()` usuwa końcowy znak nowej linii.
+    - To usuwa wszystkie białe znaki z końca, czyli:
+        - `\n` – znak nowej linii,
+        - `\r` – znak powrotu karetki,
+        - `\t` – tabulacja,
+        - ` ` spacja.
+    - ⚠️Na Windowsie wczytanie linii z `stdin.read_line()` kończy się znakiem `\r\n`. Użycie `odp.trim_end_matches('\n')` usunie tylko `\n`, zostawiając `\r` — co może skutkować np. dziwnymi efektami przy porównywaniu ciągów czy parsowaniu.
+- Zwraca oczyszczony tekst jako String.
+
+#### Funkcja `wczytaj_usize(prompt: &str) -> usize`
+```rs
+loop {
+    let odp = wczytaj_napis(prompt);
+    if let Ok(wynik) = odp.parse() {
+        return wynik;
+    } else {
+        println!("Błąd, podaj ponownie!");
+    }
+}
+```
+- Pętla: pyta użytkownika, aż poda poprawną liczbę całkowitą.
+- `parse()` próbuje skonwertować `String` na `usize`.
+- `if let Ok(...)` sprawdza, czy konwersja się powiodła.
+- W razie błędu użytkownik widzi komunikat i jest pytany ponownie.
+
+#### Funkcja `wczytaj_f64(prompt: &str) -> f64`
+```rs
+loop {
+    let odp = wczytaj_napis(prompt);
+    if let Ok(wynik) = odp.parse::<f64>() {
+        return wynik;
+    } else {
+        println!("Błąd, podaj ponownie!");
+    }
+}
+```
+- Wyświetla `prompt`, np. „Ulubiona liczba?”.
+- Wczytuje tekst od użytkownika za pomocą `wczytaj_napis`.
+- Próbuje zamienić go na liczbę zmiennoprzecinkową `f64` za pomocą: `odp.parse::<f64>()`
+- Jeśli się uda – zwraca tę liczbę.
+- Jeśli nie – informuje o błędzie i pyta ponownie.
+
+#### 🔍 Co robi `odp.parse::<f64>()`?
+Funkcja `.parse::<f64>()` to uniwersalna metoda konwertująca `String` (lub `&str`) na dowolny typ implementujący trait `FromStr`.
+W tym przypadku:
+- `::<f64>` to tzw. "turbofish" – jawne podanie typu, na który ma być dokonana konwersja.
+- Zwraca `Result<f64, _>` – czyli:
+    - `Ok(f)` jeśli udało się sparsować liczbę,
+    - `Err(_)` jeśli napotkano błąd (np. nieprawidłowy format liczby).
+
+#### 🔁 Alternatywa bez turbofish:
+Można napisać po prostu:
+```rs
+let wynik: Result<f64, _> = odp.parse();
+```
+ale wtedy typ musi być jednoznaczny z kontekstu (np. poprzez przypisanie do zmiennej typu f64 lub poprzez sygnaturę funkcji).
+#### 📘 Przykład działania:
+```rs
+Ulubiona liczba? 3.1415
+→ OK, zwraca 3.1415 (f64)
+
+Ulubiona liczba? abc
+→ Błąd, podaj ponownie!
+```
+
+[Kod - implementacja niestandardowych porównań dla struktury, całość kodu](./kody_do_wykladu/w9_2.rs)
+#### 🔧 Struktura
+```rs
+struct S(u8, u8);
+```
+To tzw. **struktura krotek (tuple struct)**. Przechowuje dwa `u8`, dostępne przez `.0` i `.1`.
+#### 🟰 Implementacja PartialEq
+```rs
+impl PartialEq for S {
+    fn eq(&self, other: &Self) -> bool {
+        self.1 == other.1
+    }
+}
+```
+- Określa, kiedy dwa obiekty `S` są sobie równe.
+- Porównywane jest tylko drugie pole `self.1`, ignorując `self.0`.
+Przykład:
+```rs
+S(2, 1) == S(3, 1) → true  // bo oba mają `.1 == 1`
+```
+#### 📊 Implementacja PartialOrd
+```rs
+impl PartialOrd for S {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.1.partial_cmp(&other.1)
+    }
+}
+```
+- Pozwala porównywać (`<`, `>`, `<=`, `>=`) obiekty `S` według drugiego pola (`.1`).
+- Używa `partial_cmp`, które zwraca `Some(Ordering)` lub `None`, np. w przypadku NaN (dla typów zmiennoprzecinkowych) — ale tutaj mamy `u8`, więc zawsze zwraca `Some(...)`.
+#### ▶️ Funkcja main
+```rs
+let s1 = S(1, 5);
+let s2 = S(2, 1);
+let s3 = S(3, 1);
+```
+Trzy instancje `S`, z różnymi `.0`, ale `s2` i `s3` mają takie samo `.1`.
+#### 🧪 Porównania:
+```rs
+println!("{}", s1 == s2);   // false
+println!("{}", s1 == s3);   // false
+```
+→ bo `5 != 1`
+```rs
+println!("{}", s3 == s2);   // true
+```
+→ bo oba mają `.1 == 1`
+#### 🔽 Porównania porządkowe (`<`):
+```rs
+println!("{}", s1 < s2);    // false
+println!("{}", s1 < s3);    // false
+```
+→ `5` nie jest mniejsze niż `1`
+```rs
+println!("{}", s3 < s2);    // false
+```
+→ `1 < 1` to fałsz
+#### 📌 Podsumowanie:
+- `S(2, 1) == S(3, 1)` → `true`, bo porównuje się tylko `.1`
+- `S(1, 5) < S(2, 1)` → `false`, bo `5 > 1`
+- `.0` (pierwsze pole) nie ma żadnego znaczenia przy porównaniach
+
+[kod -szkic gry w kółko i krzyżyk (Tic-Tac-Toe) (niedokonczony)](./kody_do_wykladu/w9_3.rs)
+### 🧩 Elementy gry
+#### 🎯 Enum Pionek
+```rs
+enum Pionek {
+    Kolko,
+    Krzyzyk,
+}
+```
+- Przedstawia możliwe typy pionków na planszy.
+- To, co w klasycznej grze oznaczamy jako `O` i `X`.
+#### 📦 Enum Pole
+```rs
+enum Pole {
+    Puste,
+    Zajete(Pionek),
+}
+```
+- Jedno pole planszy może być:
+    - puste, lub
+    - zajęte przez pionek (`Kolko` lub `Krzyzyk`).
+- Umożliwia łatwe sprawdzanie stanu planszy.
+#### 🧩 Struktura Plansza
+```rs
+struct Plansza(Vec<Vec<Pole>>);
+```
+- To dwuwymiarowa siatka pól – najpewniej 3×3 dla klasycznego Tic-Tac-Toe.
+- Przechowuje stan każdej komórki.
+- Opakowana w strukturę, co pozwala dodać metody np. `wykonaj_ruch`, `czy_koniec_gry`.
+#### 🎮 Struktura Gra
+```rs
+struct Gra {
+    plansza: Plansza,
+    interfejs: InterfejsTekstowy,
+    gracze: Vec<GraczCzlowiek>,
+    indeks_biezacego_gracza: usize,
+}
+```
+- Reprezentuje pełen stan gry.
+- Zawiera:
+    - planszę,
+    - interfejs do komunikacji z użytkownikiem,
+    - dwóch graczy,
+    - informację, który gracz teraz wykonuje ruch.
+#### 🧑 Struktura GraczCzlowiek
+```rs
+struct GraczCzlowiek {
+    pionek: Pionek,
+    imie: String,
+}
+```
+- Opisuje jednego gracza:
+    - jego pionek (`Kolko` lub `Krzyzyk`),
+    - imię (np. do wyświetlenia w UI).
+#### 🖥️ Struktura InterfejsTekstowy
+```rs
+struct InterfejsTekstowy;
+```
+- Prawdopodobnie odpowiada za komunikację tekstową z użytkownikiem (terminal).
+- Będzie miał metody typu:
+    - `pobierz_ustawienia()`,
+    - `wyswietl_plansze()`,
+    - `zapytaj_o_ruch()`.
+### ▶️ Funkcja main
+```rs
+fn main() -> Result<(), String> {
+    let interfejs = InterfejsTekstowy;
+    let ustawienia = interfejs.pobierz_ustawienia();
+    let gra = Gra::new(
+        ustawienia.utworz_gracza_o(),
+        ustawienia.utworz_gracza_x(),
+        ustawienia.pionek_rozpoczynajacy,
+        interfejs,
+    );
+    gra?.graj();
+    Ok(())
+}
+```
+Co tu się dzieje:
+- Tworzy się interfejs tekstowy.
+- Pobierane są ustawienia (najpewniej imiona graczy, wybór pionka, itp.).
+- Tworzona jest nowa gra z dwoma graczami, planszą i interfejsem.
+- `gra?.graj()` – uruchamia główną pętlę gry (jeśli `gra` to `Result`, używany jest `?` do propagacji błędów).
+- Program kończy się sukcesem (`Ok(())`), jeśli nie wystąpił błąd.
+
+### 📌 Uwagi
+- Niekompletność: brakuje:
+    - implementacji metod jak `Gra::new`, `Gra::graj`,
+    - struktury Ustawienia (która zawiera `utworz_gracza_o()` itd.),
+    - metod interfejsu (`pobierz_ustawienia()`).
+- Kod będzie uzupełniony na kolenym wykładzie :)
