@@ -9,6 +9,7 @@ Orginalny plik zawiera kolory, których nie widać na podglądzie na Githubie, w
 - [Wykład 7](#wykład-7)
 - [Wykład 8](#wykład-8)
 - [Wykład 9](#wykład-9)
+- [Wykład 10](#wykład-10)
 
 # Wykład 1
 
@@ -2230,3 +2231,390 @@ Co tu się dzieje:
     - struktury Ustawienia (która zawiera `utworz_gracza_o()` itd.),
     - metod interfejsu (`pobierz_ustawienia()`).
 - Kod będzie uzupełniony na kolenym wykładzie :)
+
+# Wykład 10
+[w10_1 - gra w kółko i krzyżyk (Tic-Tac-Toe)](./kody_do_wykladu/w10_1.rs)
+
+Ten kod to pełna implementacja gry w **kółko i krzyżyk** (Tic-Tac-Toe) w języku **Rust**. Został napisany w stylu imperatywno-obiektowym, ale dobrze pokazuje idiomy Rustowe, jak np. `enum`, `match`, `Result`, `Option`, `Vec`, a także użycie **klonowania**, **kopiowania**, i wypisywania na konsolę.
+
+### 🔧 Ogólna struktura programu
+Program składa się z kilku głównych komponentów:
+1. **Pionek** (`enum Pionek`) – reprezentuje gracza (kółko lub krzyżyk)
+2. **Pole** (`enum Pole`) – jedno pole na planszy: puste lub zajęte
+3. **Plansza** – 2D `Vec` pól, z metodami do ruchów i sprawdzania końca gry
+4. **Gracze** – dwie instancje struktury `GraczCzlowiek`
+5. **Interfejs** – wejście/wyjście tekstowe przez terminal
+6. **Gra** – zarządza przebiegiem partii
+7. `main()` – inicjuje i uruchamia grę
+
+## 📌 Kluczowe elementy i idiomy warte uwagi
+### 1. `#[derive(Clone, PartialEq, Copy)]`
+Użyte np. przy `enum Pionek` i `Pole`.
+- `Copy` oznacza, że typ może być kopiowany bitowo (jak `i32`, `char`, etc.)
+- `Clone` jest potrzebne, gdy chcemy wyraźnie klonować wartości (np. `x.clone()`)
+- `PartialEq` pozwala porównywać wartości (`a == b`)
+
+**Warto zapamiętać:** Rust nie klonuje automatycznie danych; domyślnie wszystko jest przenoszone (`move`), a `Copy` to wyjątek.
+### 2. `repr` jako metoda pomocnicza
+```rs
+impl Pionek {
+    fn repr(&self) -> char {
+        match self {
+            Self::Kolko => 'o',
+            Self::Krzyzyk => 'x',
+        }
+    }
+}
+```
+To częsty idiom w Rust – `repr` (lub `to_char`, `to_string`) jako sposób prezentacji wewnętrznej wartości do wyświetlania.
+### 3. Użycie `match` + `enum`
+```rs
+impl Wynik {
+    fn from_pole(pole: Pole) -> Self {
+        match pole {
+            Pole::Zajete(Pionek::Krzyzyk) => Self::Krzyzyk,
+            Pole::Zajete(Pionek::Kolko) => Self::Kolko,
+            Pole::Puste => panic!("to nie powinno się zdarzyć! [wygrana pustego pola?]"),
+        }
+    }
+}
+```
+Silny typ wyliczeniowy + dopasowanie `match` pozwala pokryć każdy przypadek i wymusza dokładność.
+### 4. Bezpieczne dostępy do tablicy
+Plansza to:
+```rs
+struct Plansza {
+    zaw: Vec<Vec<Pole>>,
+    wynik: Option<Wynik>,
+}
+```
+Dostęp do konkretnego pola odbywa się przez:
+```rs
+fn pole(&self, wsp: Wsp) -> Pole {
+    self.zaw[wsp.0][wsp.1]
+}
+```
+Nie ma tu sprawdzania `panic`, bo wcześniej metoda `czy_ruch_poprawny` sprawdza poprawność indeksów.
+### 5. Idiom `Option` + `expect`
+```rs
+fn wynik_partii(&self) -> Wynik {
+    self.wynik.expect("to nie powinno się zdarzyć! [sprawdzenie wyniku przed końcem partii?]")
+}
+```
+`Option<T>` to bezpieczna alternatywa dla `null`. `expect` jest wygodne, ale w prawdziwej aplikacji warto użyć `match` lub `.unwrap_or(...)`.
+### 6. Zmiana gracza: `1 - self.indeks_biezacego_gracza`
+Bardzo zwięzły sposób na przełączanie między dwoma indeksami (0 ↔ 1).
+```rs
+fn zmien_gracza(&mut self) {
+    self.indeks_biezacego_gracza = 1 - self.indeks_biezacego_gracza;
+}
+```
+### 7. Wzorce `if let`, `while let`, `matches!`
+```rs
+if let Wynik::GraTrwa = self.wynik {
+    // ...
+}
+```
+Pozwala sprawdzić, czy wartość ma okreśony wariant `enum` i — opcjonalnie — wyciągnąć dane z wnętrza tego wariantu.
+Zalety:
+- Skrócona forma `match` dla pojedynczego przypadku.
+- Czytelność: dobra do warunkowego wykonania kodu.
+Alternatywa:
+```rs
+match self.wynik {
+    Wynik::GraTrwa => { ... },
+    _ => {},
+}
+```
+Nie występuje w tym konkretnym kodzie, ale warto go znać. Przykład:
+```rs
+while let Some(ruch) = kolejka.pop() {
+    // dopóki mamy coś w kolejce, wykonuj ruch
+}
+```
+Łączy sprawdzanie dopasowania i pętlę `while`. Używany tam, gdzie chcemy iterować tak długo, jak długo zmienna ma konkretny wariant (np. `Option::Some`).
+
+**Zastosowanie:** często przy ręcznej obsłudze iteratorów, kolejki, stosów.
+```rs
+fn zajete(&self) -> bool {
+    matches!(self, Self::Zajete(_))
+}
+```
+Makro, które zwraca `true` jeśli wartość pasuje do danego wzorca. To szybki sposób na sprawdzenie wariantu bez wyciągania zawartości.
+Zalety:
+- Zwrotnie daje bool, więc idealne do warunków, np. if, assert!.
+- Zwięzłość.
+### 8. Wczytywanie danych z terminala
+```rs
+fn wczytaj_napis(prompt: &str) -> String {
+    let mut odp = String::new();
+    print!("{}", prompt);
+    std::io::stdout().flush().expect("fatalny problem ze standardowym wyjściem");
+    std::io::stdin().read_line(&mut odp).expect("fatalny problem ze standardowym wejściem");
+    // odp.trim_end_matches('\n').to_string()
+    odp.trim_end().to_string()
+}
+```
+Opis działania:
+- `prompt: &str` — Tekst, który zostanie wyświetlony jako zachęta dla użytkownika (np. „Podaj imię: ”).
+- `print!("{}", prompt);` + `stdout().flush()` — Wyświetla prompt bez nowej linii i wymusza jego wypisanie na ekranie przed oczekiwaniem na dane.
+- `read_line(&mut odp)` — Czeka na wpisanie tekstu przez użytkownika i zapisuje go do zmiennej `odp`.
+- `trim_end()` — Usuwa końcowe znaki białe (np. `\n`, `\r\n`) z końca wpisanego tekstu.
+- `to_string()` — Zwraca gotowy napis jako `String`.
+### 9. Formatowanie stringów
+```rs
+fn opis(&self) -> String {
+    format!("{} ({})", self.imie, self.pionek.repr())
+}
+```
+`format!("{} ({})", ...)` - To makro (nie funkcja), które działa podobnie do `printf` w C — ale zwraca `String`.
+W `{}` trafia `self.imie` i `self.pionek.repr()` — czyli w efekcie dostajemy nowy tekst.
+### 10. `Result<(), String>` w `main`
+```rs
+fn main() -> Result<(), String> { ... }
+```
+Pozwala zwracać błędy w stylu funkcyjnym – alternatywa dla panikowania. W `main()` to całkowicie legalne i eleganckie.
+### 🎯 Dodatkowe uwagi
+#### Sprawdzenie końca gry
+Kod zakłada planszę 3x3 – nie jest ogólny, ale czytelny. Sprawdza zwycięstwo po ruchu na:
+- przekątnych
+- rzędach
+- kolumnach
+Zrobione przez:
+```rs
+// działa tylko dla tradycyjnego KiK (3x3)
+if self.zaw[0][0].zajete()
+    && (self.zaw[0][0] == self.zaw[0][1] && self.zaw[0][1] == self.zaw[0][2]
+    || self.zaw[0][0] == self.zaw[1][1] && self.zaw[1][1] == self.zaw[2][2]
+    || self.zaw[0][0] == self.zaw[1][0] && self.zaw[1][0] == self.zaw[2][0])
+{
+    self.wynik = Some(Wynik::from_pole(self.zaw[0][0]));
+    return true;
+}
+```
+#### Separacja odpowiedzialności
+- `Plansza` nie wie nic o użytkowniku
+- `InterfejsTekstowy` nie wie nic o logice gry
+- `Gra` jest koordynatorem
+
+#### 🧠 Czego można się nauczyć z tego kodu?
+1. Jak działają `enum`, `match`, `Option`, `Result`, `Copy`, `Clone`, `PartialEq`
+2. Jak pisać własne typy i metody (`impl`)
+3. Jak zarządzać IO i użytkownikiem
+4. Jak oddzielać logikę gry od interfejsu
+5. Jak implementować proste reguły gry i ich sprawdzanie
+
+#### 🧪 Możliwe ulepszenia
+- Rozszerzenie planszy na rozmiar dynamiczny (np. 4x4)
+- AI zamiast drugiego gracza
+- Obsługa błędów bez `panic!`
+- Użycie `enum` dla `Gracz` (człowiek vs AI)
+- Refaktoryzacja sprawdzania końca gry (np. z użyciem iteratorów)
+
+## Podział projektu na wiele plików
+
+[w10_2 - gra w kółko i krzyżyk (Tic-Tac-Toe), podzielony na kilka plików](./kody_do_wykladu/w10_2)
+
+```rs
+pub mod gra;
+mod gracz_czlowiek;
+pub mod interfejs_tekstowy;
+mod pionek;
+mod plansza;
+mod pole;
+mod ruch;
+mod ustawienia;
+mod wynik;
+```
+To zawartość pliku `lib.rs` – czyli głównego punktu wejścia dla biblioteki w projekcie Rust.
+### 🧩 `lib.rs` – co to?
+To specjalny plik w Rustcie, który:
+- jest głównym modułem biblioteki (`crate`),
+- definiuje, co będzie dostępne na zewnątrz (publiczne API),
+- musi się tak nazywać, jeśli tworzysz crate typu biblioteka (w przeciwieństwie do `main.rs` dla aplikacji).
+
+📌 Uwaga: Nie musi istnieć zarazem `main.rs` i `lib.rs`, ale można mieć oba – wtedy projekt może być używany zarówno jako aplikacja, jak i biblioteka.
+
+### 🔧 Co robią `mod` i `pub mod`?
+✅ `mod nazwa;`
+- Włącza moduł z pliku `nazwa.rs` (albo z folderu `nazwa/mod.rs`).
+- Jest prywatny domyślnie – tylko bieżący moduł może go używać.
+
+Przykład:
+```rs
+mod pionek;
+```
+→ Plik `pionek.rs` jest kompilowany i dostępny tylko wewnątrz `lib.rs`
+✅ `pub mod nazwa;`
+- Robi to samo co `mod`, ale udostępnia moduł na zewnątrz – innym modułom / crate’om.
+- Tworzy część publicznego API biblioteki.
+
+Przykład:
+```rs
+pub mod interfejs_tekstowy;
+```
+→ Ten moduł można potem użyć np. w `main.rs` tak:
+```rs
+use twoja_biblioteka::interfejs_tekstowy::wczytaj_napis;
+```
+### 📄 Gdzie znaleźć nazwę biblioteki ?
+```toml
+[package]
+name = "twoja_biblioteka"
+version = "0.1.0"
+edition = "2021"
+```
+Nazwa `twoja_biblioteka` znajduje się w pliku `Cargo.toml`, jest to nazwa paczki i domyślnie także nazwa biblioteki, jeśli masz plik `src/lib.rs`.
+#### 📚 Skąd się bierze use twoja_biblioteka::...?
+Kiedy tworzysz plik `lib.rs`, to kompilator Rust traktuje jego zawartość jako kod biblioteczny. Inne binarki (np. `main.rs` w `src/` lub `src/bin/`) mogą go używać tak:
+```rs
+use twoja_biblioteka::interfejs_tekstowy::wczytaj_napis;
+```
+#### 🔧 Możesz też ją nadpisać
+Jeśli chcesz, możesz jawnie określić nazwę biblioteki inaczej niż nazwa paczki:
+```toml
+[lib]
+name = "inna_nazwa"
+path = "src/lib.rs"
+```
+Wtedy musisz używać:
+```rs
+use inna_nazwa::interfejs_tekstowy::wczytaj_napis;
+```
+### 🔧 Po co `src/bin/`?
+Rust pozwala, by jeden projekt (czyli jeden `Cargo.toml`) zawierał:
+- jedną bibliotekę (z `lib.rs`),
+- jeden główny program (z `main.rs`),
+- opcjonalnie wiele programów binarnych – w `src/bin/`.
+
+Każdy plik `.rs` w `src/bin/` to osobny program (`main`), który można osobno uruchomić.
+#### 📁 Przykład struktury projektu
+```less
+my_project/
+├── Cargo.toml
+└── src/
+    ├── lib.rs          // (opcjonalnie) biblioteka
+    ├── main.rs         // główny program binarny: `cargo run`
+    └── bin/
+        ├── testuj_ai.rs      // `cargo run --bin testuj_ai`
+        ├── eksperyment.rs    // `cargo run --bin eksperyment`
+        └── pokaz.rs          // `cargo run --bin pokaz`
+```
+#### 🔨 Jak to działa?
+Jeśli masz np. `src/bin/eksperyment.rs` z:
+```rs
+fn main() {
+    println!("Eksperymentuję!");
+}
+```
+To uruchamiasz go tak:
+```sh
+cargo run --bin eksperyment
+```
+Każdy taki plik musi zawierać `fn main()`, bo kompiluje się jako osobny program.
+#### 🧠 Kiedy to się przydaje?
+- Masz jeden silnik gry (np. w `lib.rs`), ale chcesz różne fronty: np. tekstowy, graficzny, testujący.
+- Chcesz testować różne tryby działania, osobne symulacje, narzędzia.
+- Dzielisz kod logiczny (`lib.rs`) i aplikacyjny (`bin/`), by móc lepiej testować i zarządzać.
+
+### ▶️Priorytety uruchomiania przy użyciu `cargo run`
+#### ✅ Jeśli nie ma `main.rs`, a jest jeden plik w `src/bin/`:
+```
+cargo run
+```
+➡️ uruchomi automatycznie ten jeden plik z `src/bin/`.\
+Rust wie, że skoro nie ma `src/main.rs`, ale jest tylko jeden plik binarny w `src/bin/`, to pewnie chcesz go uruchomić.
+#### ✅ Jeśli jest `main.rs`, to:
+```
+cargo run
+```
+➡️ uruchomi `src/main.rs` — to domyślny punkt wejścia binarki.
+#### ❌ Jeśli jest więcej niż jeden plik w `src/bin/`, a nie ma `main.rs`:
+```
+cargo run
+```
+➡️ zakończy się błędem:
+```
+error: `cargo run` could not determine which binary to run. Use the `--bin` option to specify a binary, or the `default-run` manifest key.
+```
+Musisz wtedy jawnie wskazać który plik chcesz uruchomić, np.:
+```
+cargo run --bin nazwa_pliku
+```
+gdzie `nazwa_pliku.rs` to np. `src/bin/nazwa_pliku.rs`.
+
+##### Podsumowanie:
+Sytuacja|	cargo run robi...
+--|--
+Tylko `main.rs`|	Uruchamia `main.rs`
+Tylko jeden plik w `src/bin/`|	Uruchamia ten plik
+`main.rs` i pliki w `src/bin/`|	Uruchamia `main.rs`
+Więcej niż jeden plik w `src/bin/`, bez `main.rs`|	Wyrzuca błąd – trzeba wskazać binarkę
+
+## Podział projektu na wiele plików wersja druga
+
+[w10_3 - gra w kółko i krzyżyk (Tic-Tac-Toe), podzielony na kilka plików, z hermetyzacją gracza](./kody_do_wykladu/w10_3)
+### 🧱 1. Hermetyzacja pól (`pionek`, `imie`)
+✅ W drugiej wersji:
+```rs
+pub struct GraczCzlowiek {
+    pionek: Pionek,
+    imie: String,
+}
+```
+- Pola są prywatne (brak `pub`).
+- Udostępniane są tylko przez gettery:
+    ```rs
+    pub fn imie(&self) -> &String
+    pub fn pionek(&self) -> Pionek
+    ```
+❌ W pierwszej wersji:
+```rs
+pub struct GraczCzlowiek {
+    pub pionek: Pionek,
+    pub imie: String,
+}
+```
+- Pola są **publiczne** – każdy moduł może je zmienić bez kontroli.
+- Brak ochrony przed niepożądaną modyfikacją danych.
+### 🧱 2. Sposób tworzenia gracza
+✅ Druga wersja:
+```rs
+GraczCzlowiek::new(imie, pionek)
+```
+- Tworzenie gracza odbywa się przez dedykowaną metodę `new`.
+- Pozwala to na:
+    - centralizację logiki tworzenia (np. walidacja danych),
+    - możliwość późniejszego dodania dodatkowych parametrów bez łamania kodu klienta.
+
+❌ Pierwsza wersja:
+```rs
+GraczCzlowiek {
+    imie,
+    pionek,
+}
+```
+- Struktura tworzona bezpośrednio, wymaga jawnego podania wszystkich pól.
+- Nie daje elastyczności — każde pole musi być znane i dostępne z zewnątrz.
+### 🧱 3. Lepsza separacja odpowiedzialności
+W drugiej wersji:
+- `GraczCzlowiek` sam zarządza swoimi danymi (nikt z zewnątrz nie zmienia mu `pionka` czy `imienia`).
+- Dzięki prywatnym polom i getterom zachowujesz kontrolę nad dostępem do danych.
+- To ułatwia przyszłą rozbudowę np. o historię ruchów, liczenie punktów itp.
+
+### 🧠 Dlaczego druga wersja jest lepsza?
+Cecha	|Druga wersja	|Pierwsza wersja
+--|--|--
+Hermetyzacja|	✅ Tak — pola prywatne	|❌ Nie — pola publiczne
+Tworzenie obiektów|	✅ Przez `new()`	|❌ Bezpośrednio
+Elastyczność i bezpieczeństwo|	✅ Można dodać logikę, walidację	|❌ Brak kontroli
+Możliwość refaktoryzacji|	✅ Duża	|❌ Niska
+Zgodność z zasadami OOP (np. SOLID)|	✅ Tak	|❌ Raczej nie
+
+### ✨ Podsumowanie
+Druga wersja stosuje dobre praktyki programowania:
+- Enkapsulacja danych (ukrycie szczegółów implementacyjnych),
+- Kontrolowany dostęp przez metody (`gettery`, `new`),
+- Możliwość rozwoju kodu bez łamania istniejącego API.
+
+Takie podejście jest bardziej skalowalne i bezpieczne w większych projektach.
