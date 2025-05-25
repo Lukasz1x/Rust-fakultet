@@ -10,6 +10,7 @@ Orginalny plik zawiera kolory, których nie widać na podglądzie na Githubie, w
 - [Wykład 8](#wykład-8)
 - [Wykład 9](#wykład-9)
 - [Wykład 10](#wykład-10)
+- [Wykład 11](#wykład-11)
 
 # Wykład 1
 
@@ -2445,6 +2446,7 @@ Przykład:
 mod pionek;
 ```
 → Plik `pionek.rs` jest kompilowany i dostępny tylko wewnątrz `lib.rs`
+
 ✅ `pub mod nazwa;`
 - Robi to samo co `mod`, ale udostępnia moduł na zewnątrz – innym modułom / crate’om.
 - Tworzy część publicznego API biblioteki.
@@ -2618,3 +2620,18 @@ Druga wersja stosuje dobre praktyki programowania:
 - Możliwość rozwoju kodu bez łamania istniejącego API.
 
 Takie podejście jest bardziej skalowalne i bezpieczne w większych projektach.
+
+# Wykład 11
+
+zagadnienia na kolokwium
+- wszystko z pierwszego kolokwium
+- tworzenie własnych typów 
+    - struct, enum, 
+    - implementacja metod dla tych typów
+    - derywacja i implementacja cech bibliotecznych
+- posługiwanie się vectorem i użycie iteratorów bibliotecznych
+- lambdy
+
+Nie będzie:
+- wczytywania z konsoli
+- modułów
