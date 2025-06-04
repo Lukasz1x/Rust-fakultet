@@ -11,6 +11,7 @@ Orginalny plik zawiera kolory, których nie widać na podglądzie na Githubie, w
 - [Wykład 9](#wykład-9)
 - [Wykład 10](#wykład-10)
 - [Wykład 11](#wykład-11)
+- [Wykład 12](#wykład-12)
 
 # Wykład 1
 
@@ -2635,3 +2636,601 @@ zagadnienia na kolokwium
 Nie będzie:
 - wczytywania z konsoli
 - modułów
+
+### [w11_1 - gra w kółko i krzyżyk (Tic-Tac-Toe), dodany gracz komputer](./kody_do_wykladu/w11_1)
+
+
+### Wskaźniki
+W Rust, typy:
+- `&Typ`
+- `Box<Typ>`
+- `Rc<Typ>`
+- `Arc<Typ>`
+
+to różne rodzaje wskaźników (czyli "inteligentnych wskaźników" lub "smart pointers") używane do zarządzania danymi na różne sposoby — od prostych referencji po zliczanie referencji w środowisku wielowątkowym.
+
+Poniżej znajdziesz dokładne porównanie i opis każdego z nich, z przykładami i zastosowaniem:
+
+### `&Typ` — Referencja
+Opis:
+- Najprostszy wskaźnik w Rust.
+- Jest **nieposiadający** (ang. non-owning): nie przejmuje własności danych.
+- Wskazuje na dane, które żyją gdzie indziej.
+- Domyślnie **niemutowalny** (`&T`) — mutowalne tylko przez `&mut T`.
+- Czas życia (lifetime) musi być znany.
+
+Użycie:
+```rs
+fn show(value: &i32) {
+    println!("{}", value);
+}
+
+let x = 10;
+show(&x); // przekazanie referencji
+```
+Kiedy używać:
+- Gdy nie chcesz przenosić własności.
+- Do przekazywania danych do funkcji bez ich kopiowania.
+
+### `Box<Typ>` — Wskaźnik na stertę (heap)
+Opis:
+- Przechowuje dane na stercie (heap), a nie na stosie.
+- **Posiadający wskaźnik** (ma pełne prawo własności).
+- Nie współdzielony (nie można go kopiować ani klonować bez `Clone`).
+- Przydatny, gdy typ ma **nieznany rozmiar w czasie kompilacji** lub jest bardzo duży.
+
+Użycie:
+```rs
+let b = Box::new(42);
+println!("{}", b);
+```
+Kiedy używać:
+- Gdy chcesz przechować duży obiekt na stercie.
+- Do pracy z typami rekurencyjnymi:
+    ```rs
+    enum List {
+    Cons(i32, Box<List>),
+    Nil,
+    }
+    ```
+### `Rc<Typ>` — Reference Counted Pointer (pojedynczy wątek)
+Opis:
+- Przechowuje dane na stercie i liczy liczbę referencji (wątkowo niebezpieczne).
+- Służy do dzielenia własności w jednym wątku.
+- Dane są automatycznie zwalniane, gdy licznik referencji osiągnie 0.
+- Tylko do użycia w pojedynczym wątku.
+
+Użycie:
+```rs
+use std::rc::Rc;
+
+let a = Rc::new(10);
+let b = Rc::clone(&a); // zwiększa licznik
+println!("a = {}, b = {}", a, b);
+```
+Kiedy używać:
+- Gdy wiele struktur w jednym wątku potrzebuje współdzielić dostęp do danych.
+- Klasyczny przykład: drzewo, gdzie wiele dzieci wskazuje na tego samego rodzica.
+### `Arc<Typ>` — Atomic Reference Counted Pointer (wielowątkowy)
+Opis:
+- Jak `Rc<T>`, ale bezpieczny wątkowo.
+- Licznik referencji jest atomowy (kosztowna operacja, ale bezpieczna).
+- Wymagany przy dzieleniu danych między wątkami.
+
+Użycie:
+```rs
+use std::sync::Arc;
+use std::thread;
+
+let data = Arc::new(vec![1, 2, 3]);
+let data2 = Arc::clone(&data);
+
+let handle = thread::spawn(move || {
+    println!("{:?}", data2);
+});
+
+handle.join().unwrap();
+```
+Kiedy używać:
+- Gdy chcesz dzielić dane między wątkami (np. wielowątkowy serwer, worker pool).
+- Połączenie z `Mutex<T>` często spotykane: `Arc<Mutex<T>>`.
+
+| Typ      | Posiada własność? | Można współdzielić?  | Wątki? | Umiejscowienie danych | Użycie główne                       |
+| -------- | ----------------- | -------------------- | ------ | --------------------- | ----------------------------------- |
+| `&T`     | ❌                 | ✅ (przez referencję) | ✅      | stos / inne           | Dostęp tymczasowy bez przenoszenia  |
+| `Box<T>` | ✅                 | ❌                    | ✅      | sterta                | Przeniesienie na stertę, rekurencja |
+| `Rc<T>`  | ✅                 | ✅                    | ❌      | sterta                | Dzielenie danych w jednym wątku     |
+| `Arc<T>` | ✅                 | ✅                    | ✅      | sterta                | Dzielenie danych między wątkami     |
+
+
+### [Kod z mechanizmem pożyczania z czasami życia](/kody_do_wykladu/w11_2.rs)
+### 🔍 Co robi ten kod?
+#### 1. Struktura `Osoba`
+```rs
+struct Osoba {
+    imie: String,
+}
+```
+- Prosta struktura z jednym polem imie, które jest typu String (czyli dynamicznie alokowany tekst na stercie).
+- Posiada pełną własność swojego pola String.
+#### 2. Struktura `Samochod<'a>`
+```rs
+struct Samochod<'a> {
+    opis: String,
+    wlasciciel: &'a Osoba,
+}
+```
+- Struktura z dwoma polami:
+    - `opis: String` — pełna własność opisu samochodu.
+    - `wlasciciel: &'a Osoba` — referencja do właściciela (typu `Osoba`), nie przejmuje własności.
+- `'a` **to czas życia (lifetime)** — oznacza, że `Samochod` może istnieć tylko tak długo, jak długo żyje jego właściciel (`Osoba`).
+
+>Rust wymaga jawnych adnotacji lifetime'ów, gdy struktura przechowuje referencje — aby zapewnić bezpieczeństwo pamięci i uniknąć wiszących wskaźników (dangling pointers).
+#### 3. Funkcja main()
+```rs
+fn main() { 
+    let o1 = Osoba {imie: "Edek".to_string()};
+```
+- Tworzymy zmienną `o1`, która posiada strukturę `Osoba` z imieniem `"Edek"`.
+```rs
+    let s1 = Samochod {opis: "zielony opel".to_string(), wlasciciel: &o1};
+    let s2 = Samochod {opis: "żółty fiat".to_string(), wlasciciel: &o1};
+```
+- Tworzymy dwa samochody (`s1` i `s2`) z różnymi opisami, ale tym samym właścicielem — referencja do `o1`.
+- Rust sprawdza, czy referencje są ważne tak długo, jak potrzebują (czyli `o1` musi żyć co najmniej tak długo jak `s1` i `s2`).
+```rs
+    {
+        let s3 = Samochod {opis: "czarny ford".to_string(), wlasciciel: &o1};
+    }
+}
+```
+- Tworzymy trzeci samochód `s3` w zasięgu blokowym (czyli jego życie kończy się po `}`).
+- `s3` ma ten sam właściciel `&o1`, ale żyje krócej (to bezpieczne — `o1` nadal istnieje w tym czasie).
+
+### 🧠 Co robi Rust pod spodem?
+Rust kompiluje ten kod bez problemu, ponieważ:
+- `o1` żyje przez cały czas funkcji `main`.
+- Wszystkie samochody (`s1`, `s2`, `s3`) mają referencje do `o1`, więc ich lifetime `'a` jest zgodny z życiem `o1`.
+- Nie ma żadnego konfliktu o mutowalność (wszystkie referencje są niemutowalne).
+- Żaden `Samochod` nie próbuje przejąć własności `Osoba`, tylko ją pożycza.
+
+### 🔒 Dlaczego potrzebny jest `'a`?
+Rust nie może sam zgadnąć, jak długo `wlasciciel` może żyć względem `Samochod`. Gdybyś nie podał `'a`, to Rust by zgłaszał błąd, że nie może ustalić długości życia referencji.
+
+Adnotacja `'a` mówi:
+> „`Samochod` nie może żyć dłużej niż osoba, na którą wskazuje `wlasciciel`”.
+
+### 🔚 Co się stanie na końcu?
+Po zakończeniu funkcji `main()`:
+- `s3` zostaje zniszczony natychmiast po wyjściu z bloku `{}`.
+- `s1`, `s2`, `o1` zostają zniszczeni pod koniec main.
+- Rust automatycznie zarządza pamięcią (brak `free()` lub `delete`).
+### 📌 Podsumowanie
+| Element    | Typ            | Własność | Czas życia         | Uwagi                            |
+| ---------- | -------------- | -------- | ------------------ | -------------------------------- |
+| `o1`       | `Osoba`        | ✅        | całe `main()`      | Właściciel danych `Osoba`        |
+| `s1`, `s2` | `Samochod<'a>` | ✅        | całe `main()`      | Pożyczają `o1` przez referencję  |
+| `s3`       | `Samochod<'a>` | ✅        | tylko w bloku `{}` | Bezpieczne, bo `o1` żyje dłużej  |
+| `&o1`      | `&Osoba`       | ❌        | zależy od `'a`     | Pożyczka bez przejęcia własności |
+
+
+# Wykład 12
+
+### [w12_1](/kody_do_wykladu/w12_1.rs)
+### 🔧 Struktury
+`struct Gracz`
+```rs
+struct Gracz {
+    imie: String,
+}
+```
+- Przechowuje imię gracza.
+- Posiada dane (`String` → pełna własność).
+
+`struct Gra`
+```rs
+struct Gra {
+    nazwa: String,
+}
+```
+- Reprezentuje grę (np. "Chess", "Counter-Strike").
+- Również ma własność pola nazwa.
+
+`struct Ranking<'a>`
+```rs
+struct Ranking<'a> {
+    gracz: &'a Gracz,
+    gra: &'a Gra,
+    punkty: i32,
+}
+```
+- Przechowuje wynik (`punkty`) konkretnego gracza w konkretnej grze.
+- Nie przejmuje własności `Gracz` ani `Gra` — używa referencji (`&`) z adnotacją lifetime `'a`.
+- `'a` mówi: `Ranking` nie może żyć dłużej niż `gracz` i `gra`, na które wskazuje.
+
+🧠 Po co `'a`?
+Ponieważ `Ranking` zawiera referencje, Rust musi wiedzieć, jak długo dane (`gracz`, `gra`) będą żyły. Lifetime `'a` gwarantuje, że `Ranking` nie przechowuje odniesień do już zniszczonych obiektów.
+
+### 🧾 Podsumowanie
+| Struktura | Posiada dane? | Typ przechowywania     | Uwagi                               |
+| --------- | ------------- | ---------------------- | ----------------------------------- |
+| `Gracz`   | ✅             | `String`               | Pełna własność                      |
+| `Gra`     | ✅             | `String`               | Pełna własność                      |
+| `Ranking` | ❌             | `&'a Gracz`, `&'a Gra` | Pożyczone dane z okresem życia `'a` |
+
+### [w12_2 - dodano main](/kody_do_wykladu/w12_2.rs)
+### 🔍 Co się dzieje w `main()`
+Kod tworzy dane graczy, gier i ich wyników w konkretnej grze. Oto krok po kroku:
+
+1. Tworzenie wektora graczy
+```rs
+let gracze = vec![
+    Gracz { imie: "Edek".to_string() },
+    Gracz { imie: "Felek".to_string() },
+];
+```
+- Tworzony jest wektor `gracze`, zawierający dwóch graczy (`Gracz`), każdy z własnym imieniem (`String`).
+- Wartości są na stercie i posiadane przez `Vec`.
+2. Tworzenie wektora gier
+```rs
+let gry = vec![
+    Gra { nazwa: "Kółko i krzyżyk".to_string() },
+    Gra { nazwa: "Szachy".to_string() },
+];
+```
+- Analogicznie tworzony jest wektor `gry`, zawierający dwie gry (`Gra`), każda z nazwą (`String`).
+- `Vec` posiada te obiekty — są trzymane na stercie.
+3. Tworzenie wektora wyników (`Ranking`)
+```rs
+let wyniki = vec![
+    Ranking {
+        gracz: &gracze[0],
+        gra: &gry[0],
+        punkty: 7,
+    },
+    Ranking {
+        gracz: &gracze[1],
+        gra: &gry[0],
+        punkty: 17,
+    },
+];
+```
+- Tworzymy wektor `Ranking`ów, które przechowują referencje do elementów `gracze` i `gry`.
+- `Ranking` nie przejmuje własności — pożycza gracza i grę (`&gracze[0]`, `&gry[0]` itd.).
+- `punkty` to zwykła liczba całkowita (`i32`).
+
+>Każdy `Ranking` zawiera:
+>- referencję do konkretnego gracza,
+>- referencję do konkretnej gry,
+>- wynik punktowy tego gracza w tej grze.
+
+### 🧠 Bezpieczeństwo lifetimów
+Rust kompiluje to, ponieważ:
+- `gracze` i `gry` żyją wystarczająco długo — przez cały `main`.
+- `Ranking`i przechowują tylko referencje (`&`) do elementów wektorów, które nie znikają za wcześnie.
+- Referencje nie są mutowane — nie ma konfliktu dostępu.
+
+### 📦 W pamięci
+| Nazwa    | Typ            | Dane                                   |
+| -------- | -------------- | -------------------------------------- |
+| `gracze` | `Vec<Gracz>`   | 2 graczy: Edek, Felek                  |
+| `gry`    | `Vec<Gra>`     | 2 gry: "Kółko i krzyżyk", "Szachy"     |
+| `wyniki` | `Vec<Ranking>` | 2 rekordy: Edek i Felek grają w 1. grę |
+
+### [w12_3 - zawartość main przeniesiono do funkcji](/kody_do_wykladu/w12_3.rs)
+
+W tej wersji kodu najważniejsza zmiana to przeniesienie logiki tworzenia graczy, gier i rankingów do osobnej funkcji `f1()`.
+
+### 📌 Kluczowa różnica
+W poprzednim kodzie:
+- Wszystko działo się w `main()`, więc dane (`gracze`, `gry`, `Ranking`) żyły do końca `main()` — długość życia zmiennych była długa.
+
+W aktualnym kodzie:
+- Wszystko dzieje się w funkcji `f1()`, a ta jest wywoływana z `main()`.
+- Dane (`gracze`, `gry`, `wyniki`) są lokalne dla `f1()` — znikają po jej zakończeniu.
+
+🧠 Co to oznacza dla lifetimów?
+```rs
+let wyniki = vec![
+    Ranking {
+        gracz: &gracze[0],
+        gra: &gry[0],
+        punkty: 7,
+    },
+];
+```
+- `Ranking` zawiera referencje do lokalnych zmiennych (`gracze`, `gry`).
+- Te referencje są ważne tylko w czasie działania `f1()`.
+- Nie ma problemu kompilacyjnego, bo `Ranking` też jest lokalny — nie próbujemy go zwrócić poza `f1()`.
+
+> Gdybyś próbował zwrócić wyniki z `f1()` do `main()`, Rust **nie pozwoliłby** na to, ponieważ **zwracałbyś referencje do już zniszczonych danych** (dangling references).
+
+### ✅ Dlaczego to działa?
+Bo cały `vec![]` z Rankingami żyje tylko w `f1()`, a wszystkie referencje wskazują na dane też z `f1()`. Ich lifetimes są krótkie, ale zgodne — wszystko kończy życie razem.
+
+### 🔄 Co się zmieniło?
+| Aspekt                         | Wcześniej (`main()`) | Teraz (`f1()`)                                 |
+| ------------------------------ | -------------------- | ---------------------------------------------- |
+| Zakres życia zmiennych         | Przez całe `main()`  | Tylko wewnątrz `f1()`                          |
+| `Ranking` żyje tak długo jak:  | `gracze`, `gry`      | `gracze`, `gry` (ale krócej, bo w `f1`)        |
+| Można użyć wyników w `main()`? | Tak                  | ❌ Nie, chyba że zmienisz lifetime i własność   |
+| Błąd kompilacji?               | ❌ Nie                | ❌ Nie (dopóki nie próbujesz zwracać `Ranking`) |
+
+## 🚨 Uwaga
+### 🧨 Przypadek 1 – zwracanie `Vec<Ranking>`
+```rs
+fn f1() -> Vec<Ranking> {
+    let gracze = vec![ /* ... */ ];
+    let gry = vec![ /* ... */ ];
+
+    let wyniki = vec![
+        Ranking { gracz: &gracze[0], gra: &gry[0], punkty: 7 },
+        // ...
+    ];
+
+    wyniki
+}
+```
+#### ❌ Dlaczego to nie działa?
+- `Ranking` zawiera referencje (`&Gracz`, `&Gra`) do danych z `gracze` i `gry`.
+- Ale `gracze` i `gry` są lokalne w `f1()` → znikają, gdy `f1()` się kończy.
+- Rust **nie pozwala ci zwrócić tych referencji, bo to byłoby niebezpieczne** — odwoływałbyś się do nieistniejącej pamięci.
+- Kompilator nie pozwala utworzyć `Vec<Ranking>` z odwołaniami do krótkowiecznych danych.
+
+#### 💬 Błąd kompilatora (w uproszczeniu):
+> `gracz` does not live long enough\
+> borrowed value does not live long enough
+
+### 🧨 Przypadek 2 – zwracanie `(Vec<Gracz>, Vec<Gra>, Vec<Ranking>)`
+```rs
+fn f1() -> (Vec<Gracz>, Vec<Gra>, Vec<Ranking>)
+```
+#### ❌ Dlaczego to też nie działa?
+Na pierwszy rzut oka może się wydawać, że skoro zwracasz również `gracze` i `gry`, to powinno działać. Ale **nie działa**, ponieważ:
+- `Ranking` zawiera referencje do `gracze` i `gry`.
+- `Ranking` powstaje zanim te wektory zostaną przeniesione (zwrócone).
+- Rust nie potrafi zagwarantować, że referencje w `Ranking`ach będą spójne z tymi konkretnymi `gracze` i `gry` po przeniesieniu.
+- To problem tzw. **self-referential** struct — struktury, które zawierają referencje do innych pól w tej samej wartości (tu: wyniki odnoszą się do gracze/gry, które wracają razem).
+
+#### 💬 Błąd kompilatora (w uproszczeniu):
+>borrowed value does not live long enough\
+>`gracze` does not live long enough
+
+
+### [w12_4 - rozdzielenie tworzenia danych i tworzenia rankingów na dwie funkcje (f1 i f2), a także korzystanie z referencji i lifetimów, by zachować bezpieczeństwo pamięci](/kody_do_wykladu/w12_4.rs)
+
+### 🔹 Funkcja `f1`
+```rs
+fn f1() -> (Vec<Gracz>, Vec<Gra>)
+```
+- Tworzy dwóch graczy (`Edek`, `Felek`) i dwie gry (`Kółko i krzyżyk`, `Szachy`).
+- Zwraca je jako dwie oddzielne kolekcje: `Vec<Gracz>` i `Vec<Gra>`.
+
+➡️ Dane są **zwracane na własność** — nie używamy tu żadnych referencji.
+### 🔹 Funkcja `f2`
+```rs
+fn f2<'a>(gracze: &'a Vec<Gracz>, gry: &'a Vec<Gra>) -> Vec<Ranking<'a>>
+```
+- Przyjmuje referencje do wektorów graczy i gier, z lifetime `'a`.
+- Tworzy ranking na podstawie tych danych: dwie pozycje (gracz, gra, punkty).
+- Zwraca `Vec<Ranking>`, gdzie każdy Ranking zawiera referencje do oryginalnych `Gracz` i `Gra`.
+
+➡️ Referencje w rankingach są bezpieczne, bo:
+- `Ranking` nie próbuje żyć dłużej niż `gracze` i `gry`,
+- te dane są przekazane z `main()` i żyją wystarczająco długo.
+### 🔹 Funkcja `main`
+```rs
+fn main() {
+    let (gracze, gry) = f1();         // f1 zwraca dane na własność
+    let wyniki = f2(&gracze, &gry);   // przekazujemy referencje do f2
+}
+```
+- W `main()` otrzymujesz dane z `f1()` i przekazujesz ich referencje do `f2()`.
+- `f2()` tworzy ranking i zwraca `Vec<Ranking>`, który jest bezpieczny, bo wszystkie dane nadal żyją w `main()`.
+### ✅ Dlaczego to działa?
+- Referencje w `Ranking`ach wskazują na dane (`gracze`, `gry`), które nadal istnieją w `main()`, więc nie ma zagrożenia dangling reference.
+- Kompilator Rust potrafi sprawdzić, że lifetime `'a` jest wystarczająco długi.
+### 🧠 Podsumowanie
+| Element        | Opis                                                                |
+| -------------- | ------------------------------------------------------------------- |
+| `f1()`         | Tworzy dane i je zwraca – własność (`Vec<Gracz>`, `Vec<Gra>`)       |
+| `f2()`         | Tworzy rankingi z referencji do danych z `f1()`                     |
+| `Ranking<'a>`  | Struktura przechowuje **referencje**, więc potrzebne są lifetimes   |
+| Bezpieczeństwo | Wszystkie referencje są ważne tak długo, jak dane źródłowe w `main` |
+
+### [w12_5 - rozbicie 2 funkcji na 3](/kody_do_wykladu/w12_5.rs)
+
+W porównaniu do poprzedniego wariantu kodu, w którym dane (`gracze`, `gry`) były tworzone i zwracane razem przez jedną funkcję `f1()`, w tym kodzie podzielono to na trzy oddzielne funkcje: `f0()`, `f1()` i `f2()`.
+### 🔄 Zmiany względem poprzedniej wersji
+| Poprzedni kod                                               | Obecny kod                                                                          |
+| ----------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Funkcja `f1()` tworzyła **graczy i gry**, a `f2()` ranking. | Funkcja `f0()` tworzy **graczy**, `f1()` tworzy **gry**, `f2()` tworzy **ranking**. |
+| `f1()` zwracała `(Vec<Gracz>, Vec<Gra>)`                    | `f0()` → `Vec<Gracz>`, `f1()` → `Vec<Gra>`                                          |
+| W `main()`: `let (gracze, gry) = f1();`                     | W `main()`: `let gracze = f0();`, `let gry = f1();`                                 |
+
+### 🧠 Co to zmienia?
+**1. Struktura kodu jest bardziej modularna i czytelna:**
+- Funkcje mają jeden odpowiedzialny cel (Single Responsibility Principle).
+- Łatwiej testować `f0()` i `f1()` osobno, np. dodać nowych graczy albo gry niezależnie.
+
+**2. Z punktu widzenia kompilatora i lifetimów nic się nie zmienia:**
+- Nadal w `f2()` przekazujesz referencje do danych z `f0()` i `f1()`, a `Ranking<'a>` poprawnie używa tych referencji.
+- Lifetime `'a` działa, bo dane (`gracze`, `gry`) **są tworzone w** `main()` **i żyją długo**, więc referencje w `Ranking` są bezpieczne.
+
+**3. Zalety praktyczne:**
+- Taka forma lepiej się skaluje — można w przyszłości mieć różne źródła danych (np. z pliku, API), po jednym dla graczy i dla gier.
+
+📦 Podsumowanie
+- ✅ **Funkcjonalnie**: program robi dokładnie to samo — tworzy dane i generuje ranking.
+- ✅ **Bezpiecznie**: wszystkie referencje mają ważny lifetime `'a`, więc kod się kompiluje.
+- ✅ **Lepsza organizacja kodu**: podział na `f0`, `f1`, `f2` poprawia modularność
+
+### [w12_6 - mała zmiana w main](/kody_do_wykladu/w12_6.rs)
+```rs
+fn main() {
+    let gracze = f0();                      // żyje do końca main
+    {
+        let gry = f1();                     // żyje do końca tego bloku
+        let wyniki = f2(&gracze, &gry);     // używa &gry
+    }                                       // gry i wyniki znikają tutaj
+}
+```
+### ✅ Dlaczego ten kod działa
+- Funkcja `f2(&gracze, &gry)` tworzy i zwraca `Vec<Ranking>`, który zawiera referencje do `gracze` i `gry`.
+- Jednak `wyniki` jest używane tylko w tym samym bloku, w którym żyją `gry`.
+- **Rust potrafi sprawdzić**, że:
+    - `&gry` nie wycieka poza ten blok,
+    - `Ranking` żyje dokładnie tak długo jak `gry`,
+    - więc **czas życia referencji pasuje** – i wszystko jest bezpieczne.
+
+>📌 W skrócie: Rust pozwala na tworzenie struktur z referencjami do lokalnych danych, **jeśli te struktury nie opuszczają zasięgu danych, do których się odnoszą**.
+
+### [w12_7 - kolejna mała zmiana w main](/kody_do_wykladu/w12_7.rs)
+
+### 🔍 Kod (istotny fragment)
+```rs
+let gry;
+{
+    gry = f1(); // przypisanie w bloku
+}
+let wyniki = f2(&gracze, &gry);
+```
+### ✅ Dlaczego to działa?
+**1. Zmienna `gry` jest zadeklarowana przed blokiem**
+```rs
+let gry;
+```
+- To oznacza, że zmienna `gry` żyje w całej funkcji `main` — czyli aż do końca `main`.
+- To, że wartość `gry` jest przypisana wewnątrz bloku, nie zmienia faktu, że **dane żyją tak długo jak zmienna**.
+
+**2. `f1()` zwraca `Vec<Gra>`, czyli dane przechodzą na własność (`ownership`) do `gry`.**
+- Rust nie trzyma się tu żadnych referencji — to **pełne wartości** typu `Vec<Gra>`, a nie dane tymczasowe.
+- To znaczy, że po przypisaniu `gry = f1();`, wektor `gry` należy do `main`, a nie do bloku, w którym przypisano wartość.
+
+**3. Referencje w `f2(&gracze, &gry)` są ważne**
+- Teraz `gry` i `gracze` są **pełnoprawnymi zmiennymi, które żyją dłużej niż** `wyniki`.
+- Można więc przekazać je jako referencje, by zbudować `Vec<Ranking<'a>>`, który przechowuje referencje do `gracze` i `gry`.
+
+### 🧠 Kluczowy mechanizm: Czas życia zmiennej ≠ miejsce przypisania
+- To, że wartość przypisujesz w bloku, nie skraca życia zmiennej.
+- **Życie zmiennej** (`gry`) **zależy od miejsca deklaracji**, a nie miejsca przypisania.
+
+Czyli ten kod:
+```rs
+let gry;
+{
+    gry = f1();     // przypisanie tutaj...
+}                   // ...ale 'gry' żyje nadal
+```
+jest równoważny z tym:
+```rs
+let gry = f1();     // przypisanie bezpośrednie
+```
+...pod względem czasu życia danych.
+
+### 📦 Dlatego to działa
+Dzięki temu, że `gry` zostało zadeklarowane poza blokiem, **przypisanie wewnątrz bloku nie ogranicza jego życia** – więc wszystkie referencje, które tworzysz do tych danych, są bezpieczne z punktu widzenia borrow checkera.
+
+### 📌 Podsumowanie
+✅ Ten kod działa, ponieważ:
+- `gry` żyje tak długo jak `main`, mimo że przypisanie jest w bloku,
+- `f1()` przenosi własność danych do `gry`,
+- `f2` tworzy `Ranking` zawierający referencje do `gracze` i `gry`, które są nadal żywe i ważne.
+
+### [w12_8 - implementacja cech dla struktury](/kody_do_wykladu/w12_8.rs)
+
+Ten kod w języku Rust definiuje generyczną strukturę `V2d<T>`, reprezentującą dwuwymiarowy wektor, oraz implementuje dla niej kilka cech i operacji. Zobaczmy dokładnie co się dzieje, linia po linii — wraz z odpowiedzią na pytanie, czemu użyto referencji przy `dbg!(&w4)`.
+
+### 📦 Struktura `V2d<T>`
+```rs
+#[derive(Debug, Clone, PartialEq, Default, Eq, Copy)]
+struct V2d<T> {
+    x: T,
+    y: T,
+}
+```
+Atrybuty `#[derive(...)]`:
+- `Debug` – umożliwia wypisanie instancji za pomocą `dbg!` lub `println!("{:?}", ...)`.
+- `Clone` – pozwala tworzyć kopie struktury (np. `v.clone()`).
+- `Copy` – umożliwia kopiowanie struktury **bit po bicie**, bez przenoszenia własności (jak `let b = a;` bez `move`).
+- `PartialEq`, `Eq` – porównywanie wektorów (`==`, `!=`).
+- `Default` – daje domyślny `V2d::default()`, czyli np. `(0, 0)` jeśli `T: Default`.
+> 🔸 Wymaga, by typ `T` również implementował te cechy (np. `i32`, `f64`, `String` tak – `Box<dyn Trait>` nie zawsze).
+
+### 🧮 Implementacja `new`
+```rs
+impl<T> V2d<T> {
+    fn new(x: T, y: T) -> Self {
+        Self { x, y }
+    }
+}
+```
+Tworzy nowy `V2d<T>` z podanymi wartościami `x` i `y`.
+### ➕ Implementacja operatora `+`
+```rs
+use std::ops::Add;
+
+impl<T: Add<Output = T> + Copy> Add for V2d<T> {
+    type Output = V2d<T>;
+    fn add(self, other: Self) -> Self {
+        Self::new(self.x + other.x, self.y + other.y)
+    }
+}
+```
+Ta część umożliwia robienie np. `v1 + v2`, jeśli typ `T` spełnia:
+- `Add<Output = T>` – potrafi się dodawać (`a + b`)
+- `Copy` – można go bezpiecznie kopiować bez przenoszenia
+
+### 🧪 Funkcja `main`
+```rs
+let w0 = V2d::new(71, -13);                                 // V2d<i32>
+let w1 = V2d::new(1, 3);                                    // V2d<i32>
+let w2 = V2d::new("kot", "pies");                           // V2d<&str>
+let w3 = V2d::new(1.1, 3.0);                                // V2d<f64>
+let w4 = V2d::new("kot".to_string(), "pies".to_string());   // V2d<String>
+```
+Tworzysz różne wektory z różnymi typami `T`.
+### 🧾 Wywołania dbg!
+```rs
+dbg!(w0);   // ok: V2d<i32>: Debug + Copy
+dbg!(w1);   // ok
+dbg!(w2);   // ok: &str implementuje Debug
+dbg!(w3);   // ok: f64 też
+dbg!(&w4);  // 🟨 tu trzeba referencji
+```
+### ❓ Dlaczego `dbg!(&w4)` a nie `dbg!(w4)`?
+Ponieważ `w4: V2d<String>` nie implementuje `Copy`, więc wyrażenie `dbg!(w4)` by przeniosło własność (`w4` już by nie istniało po tej linii).
+
+Ale później masz:
+```rs
+dbg!(w4 == w4);     // używasz w4 ponownie!
+```
+A to byłoby błędem, gdybyś wcześniej przeniósł `w4`. Dlatego zapis:
+```rs
+dbg!(&w4);          // przekazujesz tylko referencję, nie ruszając własności
+```
+jest bezpieczny i kompiluje się.
+
+### ✅ Porównania
+```rs
+dbg!(w0 == w1); // false
+dbg!(w2 == w2); // true
+dbg!(w3 == w3); // true
+dbg!(w4 == w4); // true
+```
+Działa, bo `PartialEq`/`Eq` są dostępne dzięki `#[derive(...)]` – pod warunkiem, że typy `T` też to wspierają.
+
+### ➕
+```rs
+dbg!(w0 + w1);      // V2d<i32> + V2d<i32>
+dbg!(w1 + w1);      // ok
+dbg!(w3 + w3);      // V2d<f64> + V2d<f64>
+// dbg!(w2 + w2);   // ❌ błąd: nie można dodać &str + &str
+```
+Nie działa dla `w2` (`&str`), bo `&str + &str` nie jest legalne w Rust — tylko `String + &str` działa, ale nie odwrotnie.
+
+### 🧠 Podsumowanie
+- `V2d<T>` to generyczny typ 2D wektora.
+- Wspiera `+`, `==`, `dbg!`, `clone()` itp.
+- Działa dla dowolnych `T`, pod warunkiem że `T` ma odpowiednie cechy (`Add`, `Copy`, `PartialEq`, ...).
+- `dbg!(&w4)` jest konieczne, bo `w4` nie implementuje `Copy` i chcemy zachować jego własność.

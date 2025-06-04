@@ -1,0 +1,11 @@
+pub mod gra;
+mod gracz;
+mod gracz_czlowiek;
+mod gracz_komputer_slaby;
+pub mod interfejs_tekstowy;
+mod pionek;
+mod plansza;
+mod pole;
+mod ruch;
+mod ustawienia;
+mod wynik;
