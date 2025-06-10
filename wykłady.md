@@ -12,6 +12,7 @@ Orginalny plik zawiera kolory, których nie widać na podglądzie na Githubie, w
 - [Wykład 10](#wykład-10)
 - [Wykład 11](#wykład-11)
 - [Wykład 12](#wykład-12)
+- [Wykład 13](#wykład-13)
 
 # Wykład 1
 
@@ -3234,3 +3235,562 @@ Nie działa dla `w2` (`&str`), bo `&str + &str` nie jest legalne w Rust — tylk
 - Wspiera `+`, `==`, `dbg!`, `clone()` itp.
 - Działa dla dowolnych `T`, pod warunkiem że `T` ma odpowiednie cechy (`Add`, `Copy`, `PartialEq`, ...).
 - `dbg!(&w4)` jest konieczne, bo `w4` nie implementuje `Copy` i chcemy zachować jego własność.
+
+# Wykład 13
+
+### [w13_1 - HashSet](/kody_do_wykladu/w13_1.rs)
+
+W języku Rust, `HashSet` to kolekcja, która:
+- Przechowuje unikalne wartości (bez duplikatów),
+- Nie zachowuje kolejności dodanych elementów,
+- Jest implementowana jako struktura oparta o tablicę haszującą (ang. hash table),
+- Wymaga, by elementy miały cechę `Eq` (porównywalność) i `Hash` (możliwość haszowania).
+- Rustowy `HashSet` znajduje się w bibliotece standardowej: `std::collections::HashSet`.
+- Główne operacje:
+    - `insert` – dodaje element (jeśli go nie ma),
+    - `contains` – sprawdza, czy element istnieje,
+    - `is_subset` / `is_superset` – operacje teorii zbiorów,
+    - `==` – porównanie zbiorów niezależnie od kolejności.
+
+### [w13_2 - BTreeSet](/kody_do_wykladu/w13_2.rs)
+
+`BTreeSet` to:
+- zbiór oparty o **drzewo B-drzewiaste (B-tree)**, należący do `std::collections::BTreeSet`.
+- zbiór unikalnych, posortowanych elementów,
+- użyteczny, gdy chcesz utrzymać kolejność rosnącą (np. do wyświetlania, iteracji w porządku logicznym),
+- wolniejszy niż `HashSet` przy wstawianiu i wyszukiwaniu, ale bardziej przewidywalny i bezpieczny przy porównywaniu porządkowym.
+
+>Jeśli zależy Ci na szybkości – użyj `HashSet`.\
+>Jeśli zależy Ci na kolejności i porządku – użyj `BTreeSet`.
+
+### [w13_3 - HashMap](/kody_do_wykladu/w13_3.rs)
+
+#### 🔧 Import i inicjalizacja
+```rs
+use std::collections::HashMap;
+```
+Importuje strukturę `HashMap` ze standardowej biblioteki.
+
+```rs
+let mut s1: HashMap<char, i32> = HashMap::new();
+```
+Tworzy nową, pustą mapę haszującą (`HashMap`) przechowującą:
+- klucze typu `char` (`'a'`, `'b'`, ...),
+- wartości typu `i32` (np. `3`, `33`).
+#### ➕ Wstawianie danych
+```rs
+s1.insert('a', 3);
+s1.insert('b', 33);
+s1.insert('c', 23);
+```
+Dodaje trzy pary klucz-wartość:
+- `'a' → 3`
+- `'b' → 33`
+- `'c' → 23`
+
+```rs
+println!("{:?}", s1);
+```
+- Wypisuje zawartość mapy (kolejność jest nieokreślona).
+#### 🔁 Nadpisywanie wartości
+```rs
+s1.insert('a', 723);
+```
+- Nadpisuje istniejący klucz `'a'`, nową wartością `723`.
+```rs
+println!("{:?}", s1);
+```
+Wyświetli zaktualizowaną mapę (np. `'a': 723, 'b': 33, 'c': 23`).
+#### 🔄 Iteracja przez mapę
+```rs
+for (k, v) in &s1 {
+    println!("{k}: {v}");
+}
+```
+- Iteruje przez wszystkie pary `(klucz, wartość)` i wypisuje je.
+#### 🔍 Dostęp przez `entry()`
+```rs
+println!("{:?}", s1.entry('a'));
+println!("{:?}", s1.entry('x'));
+```
+- `entry('a')` → zwraca `OccupiedEntry` – klucz `'a'` już istnieje.
+- `entry('x')` → zwraca `VacantEntry` – klucz `'x'` nie istnieje.
+#### 📥 Dodawanie wartości tylko jeśli nie istnieją
+```rs
+s1.entry('b').or_insert(145);
+s1.entry('y').or_insert(745);
+```
+- `'b'` już istnieje → nie zmienia nic.
+- `'y'` nie istnieje → wstawia `'y' → 745`.
+#### 🛠️ Modyfikowanie wartości istniejących
+```rs
+s1.entry('a').and_modify(|a| (*a)*=1000);
+```
+- `'a'` istnieje → wartość `723 * 1000 = 723000`.
+```rs
+s1.entry('z').and_modify(|a| (*a)*=-1000);
+```
+- `'z'` nie istnieje → nic się nie dzieje.
+#### ✅ Podsumowanie funkcji użytych:
+| Funkcja / metoda     | Opis                                                         |
+| -------------------- | ------------------------------------------------------------ |
+| `insert(k, v)`       | Wstawia lub nadpisuje wartość dla klucza `k`                 |
+| `entry(k)`           | Uzyskuje dostęp do wpisu (`OccupiedEntry` lub `VacantEntry`) |
+| `or_insert(v)`       | Wstawia wartość, jeśli klucz nie istnieje                    |
+| `and_modify(f)`      | Modyfikuje wartość tylko jeśli klucz istnieje                |
+| `for (k, v) in &map` | Iteruje przez wszystkie pary klucz-wartość                   |
+
+### [w13_4 - BTreeMap](/kody_do_wykladu/w13_4.rs)
+
+🧩 Co to jest `BTreeMap`?
+- `BTreeMap<K, V>` to uporządkowana mapa klucz-wartość.
+- Klucze są przechowywane w rosnącej kolejności, a struktura oparta jest na B-drzewie.
+- Zajmuje się automatycznym sortowaniem przy każdym wstawieniu.
+- Należy do biblioteki standardowej: `std::collections`.
+#### 🔧 Import i inicjalizacja
+```rs
+use std::collections::BTreeMap;
+```
+- Importuje strukturę `BTreeMap`.
+```rs
+let mut s1: BTreeMap<char, i32> = BTreeMap::new();
+```
+- Tworzy pustą mapę:
+    - klucze typu `char` (`'a'`, `'b'`, ...),
+    - wartości typu `i32`.
+
+#### ➕ Wstawianie danych
+```rs
+s1.insert('a', 3);
+s1.insert('b', 33);
+s1.insert('c', 23);
+```
+Dodaje trzy pary klucz-wartość:
+- `'a' → 3`
+- `'b' → 33`
+- `'c' → 23`
+
+```rs
+println!("{:?}", s1);
+```
+- Wypisuje zawartość mapy (kolejność jest nieokreślona).
+#### 🔁 Nadpisywanie wartości
+```rs
+s1.insert('a', 723);
+```
+- Nadpisuje istniejący klucz `'a'`, nową wartością `723`.
+```rs
+println!("{:?}", s1);
+```
+Wyświetli zaktualizowaną mapę (np. `'a': 723, 'b': 33, 'c': 23`).
+#### 🔄 Iteracja przez mapę
+```rs
+for (k, v) in &s1 {
+    println!("{k}: {v}");
+}
+```
+- Iteruje po parach `(klucz, wartość)` w kolejności rosnącej kluczy.
+#### 🔍 Dostęp przez `entry()`
+```rs
+println!("{:?}", s1.entry('a'));
+println!("{:?}", s1.entry('x'));
+```
+- `entry('a')` → zwraca `OccupiedEntry` – klucz `'a'` już istnieje.
+- `entry('x')` → zwraca `VacantEntry` – klucz `'x'` nie istnieje.
+
+#### 📥 Wstawianie tylko jeśli brak klucza
+```rs
+s1.entry('b').or_insert(145);
+s1.entry('y').or_insert(745);
+```
+- `'b'` już istnieje → nie zmienia nic.
+- `'y'` nie istnieje → wstawia `'y' → 745`.
+#### 🛠️ Modyfikacja istniejących wpisów
+```rs
+s1.entry('a').and_modify(|a| (*a)*=1000);
+```
+- `'a'` istnieje → wartość `723 * 1000 = 723000`.
+```rs
+s1.entry('z').and_modify(|a| (*a)*=-1000);
+```
+- `'z'` nie istnieje → nic się nie dzieje.
+
+#### ✅ Podsumowanie funkcji i operacji:
+| Funkcja / metoda     | Opis                                              |
+| -------------------- | ------------------------------------------------- |
+| `insert(k, v)`       | Wstawia lub nadpisuje wartość dla klucza `k`      |
+| `entry(k)`           | Uzyskuje wpis (`OccupiedEntry` lub `VacantEntry`) |
+| `or_insert(v)`       | Wstawia `v` jeśli klucz `k` nie istnieje          |
+| `and_modify(f)`      | Modyfikuje istniejącą wartość przy kluczu `k`     |
+| `for (k, v) in &map` | Iteracja po posortowanej mapie                    |
+
+#### 🔁 Porównanie BTreeMap vs HashMap
+| Cecha                  | `BTreeMap`                          | `HashMap`                    |
+| ---------------------- | ----------------------------------- | ---------------------------- |
+| Kolejność kluczy       | ✅ Tak, **rosnąca**                  | ❌ Nie                        |
+| Wydajność wstawiania   | `O(log n)`                          | `O(1)` średnio               |
+| Wymagania typów        | `Ord` (porządek)                    | `Hash + Eq`                  |
+| Typowa sytuacja użycia | Gdy ważna jest **kolejność kluczy** | Gdy ważna jest **wydajność** |
+
+
+
+### [w13_5 - HashMap](/kody_do_wykladu/w13_5.rs) 
+### [w13_6 - BTreeMap](/kody_do_wykladu/w13_6.rs)
+Oba kody pokazują bardzo podobne operacje, ale z różnymi strukturami danych: `HashMap` vs `BTreeMap`. Skoro znasz już ich podstawy, poniżej przedstawiam porównanie funkcjonalne i edukacyjne tych dwóch programów, skupiając się na różnicach i ważnych wnioskach, które z nich płyną.
+
+#### **🔍 1. Porządek przechowywania danych**
+- `HashMap`: Dane są wyświetlane w losowej kolejności (brak gwarancji porządku).
+- `BTreeMap`: Dane są posortowane po kluczach – czyli `"krowa"`, `"małpa"`, `"rekin"` pojawią się w porządku alfabetycznym.
+
+📚 Wniosek: Jeśli zależy Ci na uporządkowanej prezentacji danych (np. alfabetycznie lub rosnąco numerycznie) — użyj `BTreeMap`. W przeciwnym razie `HashMap` może być szybszy.
+#### **🧪 2. Porównanie kluczy i wartości**
+```rs
+println!("{}", mapa.contains_key("kot"));
+println!("{:?}", mapa.get("pies"));
+```
+- Działa identycznie w obu mapach.
+- Zwraca `true`/`false` lub `Some(&wartość)` / `None`.
+
+📚 Wniosek: Operacje `contains_key`, `get`, `remove` działają analogicznie — API jest spójne, więc można łatwo zamienić `HashMap` na `BTreeMap`, jeśli zmienią się potrzeby projektu.
+#### **🔁 3. Modyfikacja wartości przez referencję**
+```rs
+for dana in &mut mapa {
+    *dana.1 *= 100;
+}
+```
+- Oba kody pokazują, że **iteracja mutowalna** pozwala na bezpośrednią modyfikację wartości (np. przemnożenie).
+- Zwraca się do wartości przez `dana.1` (czyli `(&klucz, &mut wartość)`).
+
+📚 Wniosek: W obu strukturach można zmieniać dane bezpośrednio w miejscu – ważna cecha dla optymalizacji.
+#### **🧬 4. Użycie `.entry()` i operacje `and_modify`, `or_insert`**
+```rs
+let e1 = mapa.entry("krowa");
+e1.and_modify(|x| *x *= 100);
+```
+- Obie mapy używają API `Entry` do:
+    - modyfikacji istniejącego wpisu (`and_modify`),
+    - dodania wartości, jeśli nie istnieje (`or_insert`).
+
+📚 Wniosek: Mechanizm `entry` działa identycznie dla `HashMap` i `BTreeMap`. To pokazuje siłę i spójność API Rustowych kolekcji.
+#### **📊 5. Porównanie wartości liczbowych**
+```rs
+let inna_mapa = ... // f64 jako wartości
+```
+- Pokazuje, że mapy mogą przechowywać dowolne typy jako wartości (np. `i32`, `f64`), jeśli typy spełniają odpowiednie ograniczenia (`Ord`, `Hash`, `Eq`).
+
+📚 Wniosek: Elastyczność struktur — możesz mieć różne typy danych w mapach, ale wybór `HashMap` lub `BTreeMap` zależy od cech klucza:
+- `HashMap` wymaga `Hash + Eq`,
+- `BTreeMap` wymaga `Ord`.
+#### **🚀 6. Efektywność i wybór odpowiedniej mapy**
+| Cecha                         | `HashMap`                      | `BTreeMap`                       |
+| ----------------------------- | ------------------------------ | -------------------------------- |
+| Kolejność kluczy              | ❌ brak                         | ✅ posortowana                    |
+| Wydajność wstawiania/szukania | ✅ szybsza (`O(1)` średnio)     | 🔁 wolniejsza (`O(log n)`)       |
+| Stabilność iteracji           | ❌ niegwarantowana              | ✅ deterministyczna i posortowana |
+| Obsługa dużych danych         | ✅ lepsza dla szybkiego dostępu | ✅ lepsza dla danych do raportów  |
+📚 Wniosek: Kod ilustruje, że oba typy map oferują ten sam zestaw metod, ale ich wydajność i zachowanie przy iteracji różnią się — wybór zależy od potrzeb.
+#### **✨ Co te kody uczą łącznie?**
+- API Rustowych kolekcji jest **spójne** — możesz łatwo przenieść logikę z `HashMap` do `BTreeMap`.
+- Pokazują różne sposoby modyfikacji danych:
+    - przez iterację z `&mut`,
+    - przez` entry().and_modify()`,
+    - przez `entry().or_insert()`.
+- Podkreślają różnice między **kolejnością logiczną** (sortowanie) a **kolejnością wydajnościową** (hashowanie).
+- Uczą też pracy z **danymi dynamicznymi** — wstawianie, nadpisywanie, usuwanie i iteracja są naturalnie zintegrowane z językiem.
+
+### [w13_7 - Uzdrowiciel i różne metody na rozwiązanie problemu leczenia samego siebie](./kody_do_wykladu/w13_7/src/)
+### [w13_7 - główna struktura i testy do niej](./kody_do_wykladu/w13_7/src/uzdrowiciel.rs)
+
+### 🧪 Jak działają testy w Rust – na podstawie powyższego kodu
+#### 1. `#[cfg(test)]` – czyli testy tylko w czasie testowania
+```rs
+#[cfg(test)]
+mod tests {
+    ...
+}
+```
+- `#[cfg(test)]` oznacza, że ten moduł będzie kompilowany tylko podczas uruchamiania testów (`cargo test`).
+- Nie wpływa na normalne działanie programu (np. przy `cargo run` lub `cargo build`).
+- Dzięki temu możesz dołączać kod pomocniczy do testów bez zaśmiecania finalnej aplikacji/biblioteki.
+#### 2. `#[test]` – oznaczenie funkcji testowej
+Każda funkcja oznaczona `#[test]` to osobny test jednostkowy:
+```rs
+#[test]
+fn test1() {
+    ...
+}
+```
+- Kompilator traktuje to jako pojedynczy przypadek testowy.
+- Testy są automatycznie uruchamiane przez `cargo test`.
+- Funkcja nie przyjmuje argumentów i nic nie zwraca – ważne są asercje w środku.
+#### 3. `assert_eq!`, `assert!` – sprawdzanie warunków
+To są **makra testujące**, które przerywają test w razie niespełnienia warunku:
+```rs
+assert_eq!(a, b);   // sprawdza a == b
+assert!(warunek);   // sprawdza czy warunek == true
+```
+- Jeśli asercja się nie powiedzie, test zostaje uznany za niezaliczony (fail).
+- Przy niepowodzeniu wyświetlany jest pełny komunikat o błędzie, pokazujący wartości oczekiwane i rzeczywiste.
+- To pozwala szybko zdiagnozować problem.
+#### 4. `dbg!()` – pomocnicze debugowanie
+```rs
+dbg!(zmienna);
+```
+- Użycie `dbg!` drukuje do konsoli debugową reprezentację wartości.
+- Działa jak `println!("{:?}", ...)`, ale automatycznie dodaje też plik i linię, z której pochodzi.
+- Nie wpływa na wynik testu, ale jest pomocne przy analizie działania kodu.
+- Nie powinno się zostawiać `dbg!` w kodzie produkcyjnym, ale w testach jest jak najbardziej dopuszczalne.
+#### 5. Wiele testów uruchamianych niezależnie
+- Każdy `#[test]` działa **niezależnie – testy nie widzą siebie nawzajem**, co oznacza, że nie współdzielą żadnego stanu.
+- Przykład: `test1`, `test2`, `test5` – wszystkie tworzą własne obiekty `Uzdrowiciel` od zera, nie opierając się na wcześniejszych testach.
+- To fundamentalna zasada dobrych testów: **niezależność** i **powtarzalność**.
+#### 6. `cargo test` – jak to uruchamiasz?
+```bash
+cargo test
+```
+- Uruchamia wszystkie funkcje oznaczone jako `#[test]` w Twoim projekcie.
+- Domyślnie uruchamia je **równolegle**, co pozwala na szybkie sprawdzanie kodu.
+- Można testować tylko konkretny test:
+    ```bash
+    cargo test test2a
+    ```
+
+#### 7. Testy jako dokumentacja funkcjonalności
+- W Rust testy często pełnią też rolę przykładów użycia struktur, takich jak Twoje:
+- Pokazują jak tworzyć, modyfikować i używać struktur w praktyce.
+- Dobrze napisane testy można czytać jak dokumentację.
+- Np. test5 pokazuje, jak pracować z kolekcją struktur (Vec<Uzdrowiciel>).
+
+#### ✨ Podsumowanie: Co uczą testy do tego kodu?
+Te testy pokazują, jak:
+- ✅ Korzystać z `#[cfg(test)]` i `#[test]`
+- ✅ Pisać **modularne**, **izolowane** testy jednostkowe
+- ✅ Weryfikować poprawność kodu przy użyciu `assert_eq!` i `assert!`
+- ✅ Tymczasowo wspomagać się `dbg!()` przy debugowaniu
+- ✅ Sprawdzać metody modyfikujące dane (`mut`), zwracające `Option`, `bool` itp.
+- ✅ Testować działanie struktury również w kontekście kolekcji (np. `Vec`)
+
+### [w13_7 - najprostrze leczenie](./kody_do_wykladu/w13_7/src/u01_najprostsze.rs)
+### 🧠 Co robi metoda ulecz
+```rs
+impl Uzdrowiciel {
+    pub fn ulecz(&mut self, cel: &mut Uzdrowiciel, przywracane_zdrowie: u32, koszt: u32) {
+        if self.wydaj_mane(koszt).is_some() {
+            cel.zmien_zdrowie(przywracane_zdrowie as i32);
+        }
+    }
+}
+```
+Metoda `ulecz`:
+- Sprawdza, czy leczniczy uzdrowiciel (`self`) ma wystarczająco dużo many (`wydaj_mane(koszt)`).
+- Jeśli ma, zużywa ją i leczy wskazany cel (`cel`), dodając `przywracane_zdrowie` do jego zdrowia aktualnego.
+- Jeśli nie ma wystarczająco many, nie robi nic.
+### 🧪 Omówienie testów
+#### `test3` – leczenie innego uzdrowiciela
+```rs
+#[test]
+fn test3() {
+    let mut edek = Uzdrowiciel::new("Edek", 10, 5);
+    let mut felek = Uzdrowiciel::new("Felek", 20, 15);
+    edek.zmien_zdrowie(-3);                // Edek ma 7 HP
+    felek.ulecz(&mut edek, 10, 7);         // Felek leczy Edka za 10 HP, koszt 7 many
+    dbg!(edek);                            // Edek powinien mieć 10 HP (maks)
+    dbg!(felek);                           // Felek powinien mieć 8 many (15 - 7)
+}
+```
+➡️ Działa poprawnie: jeden leczy drugiego.
+#### `test4` (zakomentowany) – leczenie samego siebie
+```rs
+// let mut edek = Uzdrowiciel::new("Edek", 10, 5);
+// edek.zmien_zdrowie(-3);                 // Edek ma 7 HP
+// edek.ulecz(&mut edek, 10, 7);           // Edek leczy sam siebie, koszt 7 many
+```
+⚠️ Ten kod się nie kompiluje. Dlaczego?
+
+**❌ Rust nie pozwala pożyczyć `&mut self` i jednocześnie `&mut self` jako argument**
+
+Metoda `ulecz` przyjmuje:
+```rs
+&mut self, cel: &mut Uzdrowiciel
+```
+Ale próba `edek.ulecz(&mut edek, ...)` powoduje konflikt:
+- `self` jest już pożyczony mutowalnie
+- próbujesz pożyczyć go ponownie mutowalnie jako `cel`
+
+Rust broni się przed **podwójnym mutowaniem tego samego obiektu w tej samej funkcji**. Nie da się tak zrobić bez obejścia.
+#### `test7` (zakomentowany) – leczenie wektora, klasyczna wersja
+```rs
+let mut herosi = vec![...];
+herosi[0].zmien_zdrowie(-3);
+herosi[1].ulecz(&mut herosi[0], 10, 7);
+```
+**⚠️ To również się nie skompiluje**. Rust nie pozwala pożyczyć `&mut` dwóch elementów z tego samego `Vec` jednocześnie w prosty sposób.
+#### ✅ `test7a` – poprawna wersja leczenia między członkami `Vec`, z użyciem `split_at_mut`
+```rs
+let (h0, h1) = herosi.split_at_mut(1);
+h0[0].zmien_zdrowie(-3);             // Edek osłabiony
+h1[0].ulecz(&mut h0[0], 10, 7);      // Felek leczy Edka
+```
+🟢 To działa poprawnie. Dlaczego?
+- `split_at_mut` dzieli wektor na dwie oddzielne mutowalne części.
+- `h0` zawiera Edka, `h1` zawiera Felka i Jolę.
+- Dzięki temu mamy **dwa niezależne mutowalne odniesienia** – zgodnie z zasadami borrow checkera.
+#### ✅ Czy uzdrowiciel może uleczyć samego siebie w tej wersji kodu?
+***NIE***, bo Rust nie pozwala na podwójne `&mut self` w tej formie.
+
+### [w13_7 - metoda: ulecz sie](./kody_do_wykladu/w13_7/src/u02_ulecz_sie.rs)
+Co zmieniło się w tym kodzie?
+- Metoda `ulecz` nadal służy do leczenia innego `Uzdrowiciela`.
+- Metoda `ulecz_sie` umożliwia, by `Uzdrowiciel` uleczył siebie samego – to jest teraz poprawne, bez konieczności pożyczania obiektu dwukrotnie mutowalnie.
+- Test `test4a` pokazuje przykład użycia `ulecz_sie`.
+- Pozostałe `testy` pozostają bez zmian.
+#### Dlaczego tak?
+Rust wymaga, by w danym momencie było tylko jedno mutowalne odniesienie do danego obiektu. Gdybyś próbował wywołać:
+```rs
+edek.ulecz(&mut edek, 10, 7);
+```
+to próbujesz:
+- Mutowalnie pożyczyć `edek` jako `self`,
+- I jednocześnie mutowalnie pożyczyć `edek` jako `cel`.
+
+To powoduje konflikt, którego Rust nie pozwala.
+#### Jak to działa teraz?
+- `ulecz_sie(&mut self, ...)` bierze tylko **jedno mutowalne odniesienie do siebie** – nie ma konfliktu.
+- `ulecz(&mut self, cel: &mut Uzdrowiciel, ...)` pozwala mutowalnie pożyczyć inny obiekt.
+
+#### Przykład z testu `test4a`
+```rs
+let mut edek = Uzdrowiciel::new("Edek", 10, 8);
+edek.zmien_zdrowie(-3);     // edek ma 7 HP
+edek.ulecz_sie(10, 7);      // edek leczy siebie za 10 HP i koszt 7 many
+dbg!(edek);                 // edek powinien mieć 10 HP i mniej many
+```
+#### Podsumowanie
+- Metoda `ulecz_sie` to idiomatyczne i bezpieczne rozwiązanie problemu samoleczenia w Rust.
+- Dzięki niej masz jasny i czytelny interfejs API.
+- Rust wymaga takich rozwiązań, aby zapobiegać błędom związanym z mutowalnym aliasowaniem.
+
+### [w13_7 - surowe wskaźniki](./kody_do_wykladu/w13_7/src/u03_z_surowymi.rs)
+#### 🔍 Co robi ten kod?
+Metoda: 
+```rs
+pub fn ulecz(&mut self, cel: *mut Uzdrowiciel, przywracane_zdrowie: u32, koszt: u32)
+```
+- Zamiast bezpiecznego `&mut Uzdrowiciel`, przekazujesz `*mut Uzdrowiciel` – surowy wskaźnik mutowalny.
+- `cel.as_mut().unwrap()` wewnątrz `unsafe` zamienia go z powrotem na `&mut`.
+
+Dzięki temu możesz przekazać ten sam obiekt jako `self` i jako `cel` — czego Rust zabrania w typowym `&mut` API.
+
+#### 📌 Dlaczego to działa?
+Rust rozdziela:
+- **Bezpieczeństwo typów i pożyczania (borrow checking)** – na poziomie kompilatora dla bezpiecznego kodu.
+- **Bezpieczeństwo wykonania** – za które musisz zadbać sam, jeśli używasz unsafe.
+
+W `unsafe` możesz:
+- Dereferencjonować wskaźniki (`*mut T`, `*const T`),
+- Omijać borrow checker.
+
+Czyli to działa, bo **kompilator Ci ufa, że wiesz co robisz**.
+#### ✅ Test test4 – samoleczenie z wskaźnikiem
+```rs
+let edek_raw = &mut edek as *mut Uzdrowiciel;
+edek.ulecz(edek_raw, 10, 7);
+```
+- Tworzysz surowy wskaźnik do `edek` (`*mut Uzdrowiciel`).
+- Wywołujesz `ulecz`, przekazując wskaźnik do siebie samego.
+
+To działa, ponieważ `self` to `&mut edek`, a `cel` to surowy wskaźnik – kompilator nie narzeka, bo nie analizuje tego konfliktu w `unsafe`.
+#### ⚠️ Potencjalne zagrożenie
+Chociaż kod działa, **łamiesz zasadę "jednego mutowalnego odniesienia na raz"** – czyli **aliasing** + **mutacja**, co może prowadzić do **niezdefiniowanego zachowania** (UB – undefined behavior) w bardziej złożonym kodzie.
+
+>To działa, ale jest potencjalnie niebezpieczne i niezalecane w bezpiecznych aplikacjach.
+
+#### 🛡️ Bezpieczna alternatywa
+Metoda `ulecz_sie` z poprzedniej wersji jest idiomatycznym i bezpiecznym rozwiązaniem:
+```rs
+pub fn ulecz_sie(&mut self, przywracane_zdrowie: u32, koszt: u32)
+```
+Nie używa `unsafe`, nie wymaga wskaźników — i kompilator Cię chroni.
+#### Podsumowanie
+| Cecha                   | `ulecz` z \&mut      | `ulecz_sie` | `ulecz` z \*mut    |
+| ----------------------- | -------------------- | ----------- | ------------------ |
+| Bezpieczny kod Rust     | ✅                    | ✅           | ❌ (unsafe)         |
+| Pozwala na samoleczenie | ❌                    | ✅           | ✅                  |
+| Chroni przed UB         | ✅                    | ✅           | ❌                  |
+| Wygoda i idiomatyczność | ✅                    | ✅           | ❌                  |
+| Użycie w testach        | Ok, z ograniczeniami | Ok          | Ok, ale z ryzykiem |
+
+### [w13_7 - surowe wskaźniki, ale z dopiskiem unsafe w nagłówku funkcji](./kody_do_wykladu/w13_7/src/u04_z_surowymi_i_dopiskiem.rs)
+#### ✅ Co się zmieniło?
+**Metoda `ulecz` jest teraz oznaczona jako `unsafe`**
+```rs
+pub unsafe fn ulecz(&mut self, cel: *mut Uzdrowiciel, przywracane_zdrowie: u32, koszt: u32)
+```
+Oznacza to:
+- Każde jej wywołanie musi być wewnątrz bloku `unsafe { ... }`.
+- Kompilator nie gwarantuje, że użycie będzie bezpieczne — **Ty (programista) musisz to zapewnić**.
+
+#### Bezpieczniej i bardziej idiomatycznie
+Wymuszenie `unsafe` chroni przed przypadkowym błędnym użyciem funkcji — jeśli ktoś ją wywoła, **Rust zmusi go do uważności**:
+```rs
+unsafe {
+    uzdrowiciel.ulecz(ptr, 10, 7);
+}
+```
+To czytelny sygnał: **"uważaj, bo możesz popsuć pamięć"**.
+
+### [w13_7 - RefCell](./kody_do_wykladu/w13_7/src/u05_z_ref_cell.rs)
+Ta najnowsza wersja z użyciem `RefCell<Uzdrowiciel>` to bardzo czysta i bezpieczna alternatywa wobec `*mut` i `unsafe`. Oto pełna analiza:
+#### ✅ Co sie zmieniło?
+Zastąpiłeś użycie surowych wskaźników typem `RefCell<Uzdrowiciel>`, aby skorzystać z **wewnętrznej mutowalności**. Dzięki temu:
+- Nie potrzebujesz `unsafe`
+- Nie łamiesz zasad aliasowania, bo `RefCell` sam sprawdza w czasie wykonywania, czy nie ma dwóch mutujących pożyczek
+- Można używać jednej struktury zarówno do samoleczenia, jak i leczenia innych
+
+#### 🔧 Działanie RefCell
+`RefCell` to kontener, który umożliwia mutację nawet z niezmiennych referencji, ale tylko w czasie wykonania (run-time). W odróżnieniu od systemu pożyczania kompilatora:
+- `RefCell::borrow()` daje `Ref<T>` — dostęp tylko do odczytu
+- `RefCell::borrow_mut()` daje `RefMut<T>` — dostęp do zapisu
+- Próba jednoczesnego `borrow_mut()` i `borrow()`/`borrow_mut()` = panic!
+
+### 🧪 Analiza testów
+#### `test3` – Leczenie innego
+```rs
+felek.ulecz(&edek, 10, 7);
+```
+Działa — bezpieczna mutacja `edek` przez `RefCell`.
+#### `test4` – Samoleczenie przez `RefCell`
+```rs
+edek.borrow_mut().ulecz(&edek, 10, 7);
+```
+Działa! Rust nie narzeka, bo:
+- ulecz przyjmuje `&RefCell<Uzdrowiciel>`
+- `self` to `RefMut`, a `cel` to `&RefCell`
+
+**Może dojść do paniki**, jeśli wewnątrz ulecz spróbujesz jeszcze raz pożyczyć self, ale Twój kod robi to tylko raz, więc OK.
+#### `test7` – We wspólnym wektorze
+```rs
+herosi[1].borrow_mut().ulecz(&herosi[0], 10, 7);
+```
+Działa – brak kolizji pożyczania, bo `ulecz` pożycza tylko `herosi[0]` (a `herosi[1]` jest `self`).
+### ⚠️ Możliwe problemy
+#### 1. Panika w czasie wykonywania
+Jeśli przypadkowo spróbujesz:
+```rs
+let a = rc.borrow_mut();
+let b = rc.borrow_mut(); // PANIKA!
+```
+To program się wywali — ale tylko przy błędzie logicznym.
+#### 2. Uwaga na `RefCell` w środowiskach wielowątkowych
+`RefCell` działa tylko w pojedynczym wątku. Jeśli planujesz wątki, musisz użyć `Mutex`.
+#### ✅ Rekomendacja
+To podejście jest obecnie:
+- **Najbardziej idiomatyczne**
+- **Całkowicie bezpieczne**
+- **Uniwersalne** (samoleczenie i leczenie innych)
+### ✅ Podsumowanie
+| Podejście         | Bezpieczeństwo   | Ergonomia      | Wielowątkowość        | Uwagi                      |
+| ----------------- | ---------------- | -------------- | --------------------- | -------------------------- |
+| `&mut`            | ✅ Tak            | ✅ Tak          | ✅ Tak                 | Nie pozwala na aliasowanie |
+| `*mut` + `unsafe` | ❌ Twoja rola     | ❌ Nieco trudne | ✅ Tak                 | Potencjalne UB             |
+| `RefCell`         | ✅ Tak (run-time) | ✅ Bardzo dobre | ❌ Tylko single-thread | Panika przy złym użyciu    |
