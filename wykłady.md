@@ -13,6 +13,7 @@ Orginalny plik zawiera kolory, których nie widać na podglądzie na Githubie, w
 - [Wykład 11](#wykład-11)
 - [Wykład 12](#wykład-12)
 - [Wykład 13](#wykład-13)
+- [Wykład 14](#wykład-14)
 
 # Wykład 1
 
@@ -3794,3 +3795,226 @@ To podejście jest obecnie:
 | `&mut`            | ✅ Tak            | ✅ Tak          | ✅ Tak                 | Nie pozwala na aliasowanie |
 | `*mut` + `unsafe` | ❌ Twoja rola     | ❌ Nieco trudne | ✅ Tak                 | Potencjalne UB             |
 | `RefCell`         | ✅ Tak (run-time) | ✅ Bardzo dobre | ❌ Tylko single-thread | Panika przy złym użyciu    |
+
+# Wykład 14
+
+### [w14_1 - Blędy](./kody_do_wykladu/w14_1.rs)
+
+#### 1. Importy i definicje błędów
+```rs
+use std::num::ParseIntError;
+```
+- Importuje standardowy typ błędu Rust służący do obsługi błędów parsowania stringów na liczby (i32 w tym wypadku).
+```rs
+#[derive(Debug)]
+struct BladLiczbaNieparzysta;
+```
+- Własny typ błędu, który reprezentuje błąd w sytuacji, gdy liczba nie jest parzysta.
+```rs
+#[derive(Debug)]
+struct TylkoParzyste(i32);
+```
+- Główna struktura: owija liczbę całkowitą, która musi być parzysta.
+```rs
+#[derive(Debug)]
+enum MojBlad {
+    BladParsowania(ParseIntError),
+    BladParzystosci,
+}
+```
+- Typ wyliczeniowy (enum) do reprezentowania błędów w sposób uogólniony:
+    - `BladParsowania`: błąd parsowania stringa do liczby.
+    - `BladParzystosci`: liczba nie jest parzysta.
+
+#### 2. Konwersje błędów (`From`)
+```rs
+impl From<BladLiczbaNieparzysta> for MojBlad {
+    fn from(e: BladLiczbaNieparzysta) -> MojBlad {
+        MojBlad::BladParzystosci
+    }
+}
+```
+- Konwertuje `BladLiczbaNieparzysta` na `MojBlad::BladParzystosci`.
+```rs
+impl From<ParseIntError> for MojBlad {
+    fn from(e: ParseIntError) -> MojBlad {
+        MojBlad::BladParsowania(e)
+    }
+}
+```
+- Konwertuje `ParseIntError` na `MojBlad::BladParsowania`.
+
+Dzięki tym implementacjom można używać `?` w metodach zwracających `Result<T, MojBlad>`.
+
+#### 3. Implementacja `TylkoParzyste`
+```rs
+impl TylkoParzyste {
+```
+> a.  `from_i32(n: i32)`
+- Tworzy `TylkoParzyste` z liczby, jeśli jest parzysta. W przeciwnym razie zwraca błąd.
+> b. `from_str(x: &str) -> Option<TylkoParzyste>`
+- Próbuje sparsować stringa na `i32`.
+- Jeśli się uda, sprawdza parzystość.
+- Zwraca `Some(...)` jeśli wszystko się udało, `None` w razie jakiegokolwiek błędu.
+- Używa prostych `.ok()?` i `.ok()?` do obsługi błędów – bardzo "cichy" fallback.
+> c. `from_str_res(x: &str) -> Result<TylkoParzyste, MojBlad>`
+- Rozpisana wersja obsługi błędów:
+    - Próbuje sparsować string na liczbę.
+        - W razie błędu zwraca `Err(MojBlad::BladParsowania(p))`.
+    - Sprawdza, czy liczba jest parzysta.
+        - Jeśli nie, zwraca `Err(MojBlad::BladParzystosci)`.
+    - Jeśli wszystko się uda, zwraca `Ok(...)`.
+> d. `from_str_res_1(x: &str) -> Result<TylkoParzyste, MojBlad>`
+- Skrócona wersja powyższego z użyciem operatora `?`, wykorzystująca implementacje `From` dla błędów.
+- Dużo bardziej idiomatyczna wersja w stylu Rusta.
+
+#### 4. main() — testowanie różnych przypadków
+
+Kod testuje różne scenariusze, wypisując wyniki:
+```rs
+println!("{:?}", "".parse::<i32>());
+```
+- Próba sparsowania pustego stringa: błąd `Err(...)`.
+```rs
+println!("{:?}", TylkoParzyste::from_str(""));
+```
+- `None`, bo nie udało się sparsować pustego stringa.
+```rs
+println!("{:?}", TylkoParzyste::from_str_res(""));
+```
+- `Err(BladParsowania(...))`.
+```rs
+println!("{:?}", TylkoParzyste::from_str_res_1(""));
+```
+- To samo: `Err(BladParsowania(...))`.
+
+Analogicznie dla `"x"`, `"33"`, `"44"`:
+- `"x"`: nie da się sparsować, więc błąd parsowania.
+- `"33"`: parsowanie OK, ale liczba nieparzysta → `BladParzystosci`.
+- `"44"`: wszystko OK → `Ok(TylkoParzyste(44))`.
+
+#### Podsumowanie
+Co kod demonstruje:
+- Tworzenie struktur reprezentujących wartości spełniające pewne warunki (np. parzystość).
+- Implementowanie własnych błędów i konwersji błędów przy użyciu `From`.
+- Różne sposoby obsługi błędów: `Option`, `Result`, jawne `match`, oraz idiomatyczny `?`.
+- Testowanie zachowania programu w sytuacjach poprawnych i błędnych.
+
+### [w14_2 - Wielowątkowość](./kody_do_wykladu/w14_2.rs)
+#### 🔧 Sekcja: `use std::thread;`
+Importuje moduł `thread`, który umożliwia tworzenie i zarządzanie wątkami w Rust.
+
+#### 🧮 Stała ILE
+```rs
+const ILE: u32 = 20;
+```
+- Stała `ILE` określa, ile wątków ma zostać uruchomionych.
+- W tym przypadku: 20 wątków.
+#### 🧵 `main()` – główna funkcja programu
+```rs
+let mut watki = vec![];
+```
+- Tworzy wektor (`Vec`), do którego będą dodawane uchwyty do uruchomionych wątków (`JoinHandle<u32>`).
+#### 🔁 Tworzenie i uruchamianie wątków
+```rs
+for i in 0..ILE {
+    watki.push(thread::spawn(move || {
+        println!("wątek: {}", i);
+        println!("wątek: {}", i);
+        return i;
+    }));
+}
+```
+- Pętla `for` uruchamia 20 wątków, każdy z inną wartością `i` (od 0 do 19).
+- `thread::spawn(...)` tworzy nowy wątek.
+- `move || { ... }` to zamknięcie przenoszące wartość `i` do wątku, aby była ona bezpiecznie używana bez odwołań do zewnętrznego zakresu.
+- Wewnątrz każdego wątku:
+    - Dwa razy wypisywana jest wartość `i`.
+    - Wątek zwraca wartość `i`.
+    
+#### 🔚 Zbieranie wyników
+```rs
+for watek in watki {
+    let x = watek.join();
+    println!("{:?}", x);
+}
+```
+- `join()` czeka na zakończenie danego wątku.
+- Zwraca `Result<u32, Box<dyn Any + Send + 'static>>`, czyli:
+    - `Ok(wartość)` jeśli wątek zakończył się poprawnie.
+    - `Err(...)` jeśli wątek spowodował panikę.
+- Wypisywany jest wynik każdego wątku.
+#### 🧪 Przykładowy wynik działania
+Kolejność nie jest deterministyczna, ponieważ wątki działają równolegle.
+```
+wątek: 1
+wątek: 1
+wątek: 0
+wątek: 0
+...
+Ok(1)
+Ok(0)
+...
+```
+Każdy wątek wypisuje swoją wartość dwa razy i zwraca ją, a main wypisuje wynik zwrócony przez `join()`
+❗ Uwagi
+Kod jest wielowątkowy, ale brak synchronizacji między wątkami oznacza, że ich kolejność działania i wypisywania na `stdout` jest losowa.
+
+### [w14_3 - Makra](./kody_do_wykladu/w14_3.rs)
+#### 📌 Makro: `macro_rules! witaj`
+```rs
+macro_rules! witaj {
+    () => {
+        println!("Witaj, człowieku!")
+    };
+    ($x:expr) => {
+        println!("Witaj, {}!", $x)
+    };
+    ($x:expr, $y:expr) => {
+        println!("Witajcie, {} i {}!", $x, $y)
+    };
+}
+```
+Makro `witaj!` ma 3 wersje (przeciążone wzorce):
+| Wzorzec              | Opis działania                                        |
+| -------------------- | ----------------------------------------------------- |
+| `()`                 | Gdy nie ma argumentów — wypisuje: `Witaj, człowieku!` |
+| `($x:expr)`          | Gdy 1 wyrażenie — wypisuje: `Witaj, <wartość>!`       |
+| `($x:expr, $y:expr)` | Gdy 2 wyrażenia — wypisuje: `Witajcie, <x> i <y>!`    |
+```
+- `expr` to typ wzorca – oznacza dowolne wyrażenie ("tekst", 123, zmienna, itp.).
+- `println!` działa identycznie jak w normalnym kodzie.
+#### ▶️ Funkcja main
+```rs
+fn main() {
+    witaj!();                   // Brak argumentów
+    witaj!("Edek");            // Jeden argument: &str
+    witaj!(123);               // Jeden argument: liczba
+    witaj!("Jacek", "Placek"); // Dwa argumenty: &str, &str
+}
+```
+#### Efekty:
+1. `witaj!();`
+- Dopasowuje się do ()
+- Drukuje:
+    > Witaj, człowieku!
+2. `witaj!("Edek");`
+- Dopasowuje się do ($x:expr)
+- Drukuje:
+    > Witaj, Edek!
+3. `witaj!(123);`
+- Również ($x:expr)
+- Drukuje:
+    > Witaj, 123!
+4. `witaj!("Jacek", "Placek");`
+- Dopasowuje się do ($x:expr, $y:expr)
+- Drukuje:
+    > Witajcie, Jacek i Placek!
+#### 🧠 Co to pokazuje?
+- Makra `macro_rules!` mogą dopasowywać różne zestawy argumentów — podobnie jak przeciążanie funkcji.
+- Pozwalają generować kod na podstawie wzorców.
+- Są rozszerzane na etapie kompilacji, a nie w czasie działania programu.
+- Bardzo przydatne do automatyzowania kodu, pisania DSL-i itp.
+
+#### ✅ Podsumowanie
+Makro witaj! działa jak funkcja z trzema przeciążeniami, wybierając różne `println!` zależnie od liczby argumentów. To świetny przykład tego, jak w Rust można pisać czytelne i elastyczne makra, które nie są dostępne w wielu innych językach wysokiego poziomu.
